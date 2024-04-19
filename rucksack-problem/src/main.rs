@@ -35,12 +35,12 @@ fn main() {
 
     print!("      | ");
     for i in 0..N { print!("{i:>5} "); }
-    println!("");
-    println!("{:-<1$}", "", 8 + 6*N);
+    println!(" | a_max");
+    println!("{:-<1$}", "", 8 + 6*N + 8);
 
     for alpha in 1..(p_sum + 1)
     {
-        if alpha % 100 == 1 { println!(""); }
+        if alpha % 100 == 1 && alpha != 1{ println!(""); }
         print!("{alpha:>5} | ");
         for i in 0..N
         {
@@ -53,10 +53,19 @@ fn main() {
             {
                 let mut sum_withnew = 0;
                 if alpha >= prices[i] { 
-                    sum_withnew = matrix[(alpha-prices[i]) * N + i - 1] + weights[i];
+                    if matrix[(alpha-prices[i]) * N + i - 1] > 0 || alpha - prices[i] == 0 {
+                        sum_withnew = matrix[(alpha-prices[i]) * N + i - 1] + weights[i];
+                    }
+                    else { sum_withnew = 0; }
                 }
 
                 let sum_withoutnew = matrix[alpha*N + i - 1];
+                /*
+                if alpha == 39 || alpha == 38 { 
+                    print!("<{sum_withnew},{sum_withoutnew},{}>", 
+                                (if alpha >= prices[i] {alpha-prices[i]} else {0}));
+                }
+                */
 
                 if sum_withnew == 0 { matrix.push(sum_withoutnew); }
                 else if sum_withoutnew == 0 { matrix.push(sum_withnew); }
@@ -66,9 +75,10 @@ fn main() {
             print!("{:>5} ", matrix[matrix.len() - 1]);
         } 
 
-        if matrix[matrix.len() - 1] <= B { alpha_max = alpha; }
-        println!("");
+        if matrix[matrix.len() -1] != 0 && matrix[matrix.len() - 1] <= B { alpha_max = alpha; }
+        println!(" | {alpha_max:>5}");
     }
 
+    println!("");
     println!("a_max: {alpha_max}");
 }
