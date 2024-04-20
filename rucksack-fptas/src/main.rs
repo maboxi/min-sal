@@ -21,10 +21,10 @@ fn main() {
     let objects: Vec<(usize, usize)> = objects_.into_iter().collect();
 
     //let weights_orig: Vec<usize> = objects.clone().into_iter().map(|(w,_)| {w}).collect();
-    let prices_orig: Vec<usize> = objects.clone().into_iter().map(|(_,p)| {p}).collect();
+    let prices_orig: Vec<_> = objects.iter().map(|(_,p)| {p}).collect();
 
-    let p_min = prices_orig.clone().into_iter().min().expect("Error while finding min price");
-    let p_max = prices_orig.clone().into_iter().max().expect("Error while finding max price");
+    let p_min = prices_orig.iter().min().expect("Error while finding min price");
+    let p_max = prices_orig.iter().max().expect("Error while finding max price");
     let p_sum = prices_orig.clone().into_iter().sum::<usize>();
 
     let k: f32 = 10.0; // EPSILON * *p_max as f32 / N as f32;
@@ -36,13 +36,12 @@ fn main() {
     print_objects(&objects);
 
     // conversion
-    let objects: Vec<(usize, usize)> = objects.into_iter().map(|(w,v)| {
-        let v_: f32 = v as f32 / k;
-        (w, v_ as usize)//(w, v_.to_uint().expect("Cannot convert {v} to usize!"))
+    let objects: Vec<(usize, usize)> = objects.into_iter().map(|(w,p)| {
+        let p_: f32 = p as f32 / k;
+        (w, p_ as usize)
         }).collect();
 
-    let weights: Vec<usize> = objects.clone().into_iter().map(|(w,_)| {w}).collect();
-    let prices: Vec<usize> = objects.clone().into_iter().map(|(_,p)| {p}).collect();
+    let (weights, prices) : (Vec<usize>, Vec<usize>) = objects.iter().cloned().unzip();
 
     let p_sum_adjusted = prices.clone().iter().sum::<usize>();
 
