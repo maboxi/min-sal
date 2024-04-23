@@ -1,0 +1,49 @@
+
+    /* 
+        hash.insert_at((i, data), |(_, d1), (_, d2)| -> bool {
+            print!("Comparison func: {:?} vs {:?}", d1, d2);
+            match d1 {
+                None => {
+                    match d2 {
+                        None => { println!(" => false (inf & inf -> insert at end)"); false},
+                        Some(_) => { println!(" => true (inf & not inf -> insert before)"); true},
+                    }
+                },
+                Some(d1_) => {
+                    match d2 {
+                        None => {println!(" => false (not inf & inf -> insert after)"); false},
+                        Some(d2_) => {println!(" => {} (not inf & not inf -> check)", d1_ > d2_); d1_ > d2_},
+                    }
+                }
+            }
+        }, |(i, _)| i, |(_, d_opt)| {
+            d_opt
+        });
+
+    
+    fn insert_at<F, G, H>(&mut self, data: T, comp: F, index: G, distance: H)
+    where
+        F: Fn(&T, &T) -> bool,
+        G: Fn(&T) -> &usize,
+        H: Fn(&T) -> &Option<usize>
+    {
+        match self.0 {
+            None => {
+                println!("Inserting first element {} ({:?})", index(&data), distance(&data));
+                self.insert_back(data)
+            },
+            Some((ref mydata, ref mut tail)) => {
+                println!("Insert check new: {} (d={:?}) vs cur: {} (d={:?})",
+                    index(&data), distance(&data), index(&mydata), distance(&mydata));
+                if comp(&mydata, &data)
+                {
+                    println!("Inserting {} (d={:?}) {} (d={:?})",
+                        index(&data), distance(&data), index(&mydata), distance(&mydata));
+                    self.insert_front(data);
+                }
+                else { tail.insert_at(data, comp, index, distance); }
+            }
+        }
+    }
+    */
+
