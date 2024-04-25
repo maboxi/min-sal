@@ -2,7 +2,7 @@
 #[derive(Debug)]
 pub struct LinkedList<T> (Option<(T, Box<LinkedList<T>>)>);
 
-impl<T: PartialOrd + PartialEq + Clone> LinkedList<T> {
+impl<T: Clone> LinkedList<T> {
     pub fn new() -> Self { LinkedList(None) }
 
     pub fn is_empty(&self) -> bool { self.0.is_none() }
@@ -33,19 +33,6 @@ impl<T: PartialOrd + PartialEq + Clone> LinkedList<T> {
                     self.insert_front(data);
                 }
                 else { tail.insert_at(data, comp); }
-            }
-        }
-    }
-
-    pub fn insert_ordered(&mut self, data: T) {
-        match self.0 {
-            None => self.insert_back(data),
-            Some((ref mydata, ref mut tail)) => {
-                if mydata > &data {
-                    self.insert_front(data);
-                } else {
-                    tail.insert_ordered(data);
-                }
             }
         }
     }
@@ -128,6 +115,21 @@ impl<T: PartialOrd + PartialEq + Clone> LinkedList<T> {
     }
 
     pub fn iter(&self) -> LinkedListIter<'_, T> { LinkedListIter{cur: self} }
+}
+
+impl<T: PartialOrd + PartialEq + Clone> LinkedList<T> {
+    pub fn insert_ordered(&mut self, data: T) {
+        match self.0 {
+            None => self.insert_back(data),
+            Some((ref mydata, ref mut tail)) => {
+                if mydata > &data {
+                    self.insert_front(data);
+                } else {
+                    tail.insert_ordered(data);
+                }
+            }
+        }
+    }
 }
 
 pub struct LinkedListIter<'a, T> {

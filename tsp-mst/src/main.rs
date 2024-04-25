@@ -97,36 +97,44 @@ fn tsp_mst(n: usize, edges: &Vec<(usize, usize, usize)>) -> Result<usize, & 'sta
     print_hash(&hash);
     println!("{:-<1$}", "", 50);
 
+    let mut mst: Tree<Node> = Tree::new();
+    let mut edgesum: usize = 0;
+
     let mut markers = vec![true; n];
     while !hash.is_empty() {
-        let curnode = hash.pop_front();
+        let curnode = hash.pop_front()?;
         
         let distance: usize;
-        let index: usize;
-
-        match curnode {
-            Err(errmsg) => {
-                println!("Hash now empty!");
-                eprintln!("{errmsg}");
-                break
+        let index: usize = curnode.index;
+        match curnode.distance {
+            None => {
+                println!("Current node: index {index}, distance ∞");
+                eprintln!(" => Current node is not accessible by other nodes already in MST -> cannot run TSP");
+                result = Err("Node {index} is not accessible in MST creation!");
+                return result;
             },
-            Ok(node) => {
-                index = node.index;
-                match node.distance {
-                    None => {
-                        println!("Current node: index {index}, distance ∞");
-                        eprintln!(" => Current node is not accessible by other nodes already in MST -> cannot run TSP");
-                        result = Err("Node {index} is not accessible in MST creation!");
-                        return result;
-                    },
-                    Some(dist) => { 
-                        distance = dist;
-                    }
-                }
-            } 
+            Some(dist) => { 
+                distance = dist;
+                edgesum += dist;
+            }
         }
 
         println!("Current node: index {index}, distance {distance}");
+
+        // add to mst
+        mst.insert_search(Node{index: index, distance: Some(distance), predecessor: None}, &|node: &Node| node.index == curnode.predecessor.expect("Error: trying to insert node without predecessor into non-empty MST!"), &|node: &Node, mode: usize| {
+            let dist_str = node.distance.map(|d| d.to_string()).unwrap_or("∞".to_string());
+            let predecessor_str = node.predecessor.map(|d| d.to_string()).unwrap_or("-".to_string());
+
+            match mode {
+                0 => print!("First element in MST: "),
+                1 => print!("Adding to children: "),
+                2 => print!("Recursive send: "),
+                _ => print!("Unknown debug code '{mode}': ")
+            }
+            
+            println!("Node {}: Distance {}, Predecessor: {}", node.index, dist_str, predecessor_str);
+        });
         
         // Update hash with adjacency list of current node
         markers[index - 1] = false;
@@ -173,6 +181,28 @@ fn tsp_mst(n: usize, edges: &Vec<(usize, usize, usize)>) -> Result<usize, & 'sta
     }
 
     println!("\n");
+
+    println!("Sum of edges * 2 = {}", edgesum * 2);
+
+    println!("MST after creation:");
+
+    mst.print_preorder(&|n_opt: Option<&Node>| {
+        match n_opt {
+            None => println!("MST empty!"),
+            Some(node) => {
+                let dist_str = node.distance.map(|d| d.to_string()).unwrap_or("∞".to_string());
+                let predecessor_str = node.predecessor.map(|d| d.to_string()).unwrap_or("-".to_string());
+                println!("  Node {}: Distance {}, Predecessor: {}", node.index, dist_str, predecessor_str);
+            }
+        }
+    });
+
+    mst.print_singlenodes(&|t_opt| {
+        match t_opt {
+            None => "-".to_string(),
+            Some(node) => node.index.to_string()
+        }
+    });
 
     return result;
 }
