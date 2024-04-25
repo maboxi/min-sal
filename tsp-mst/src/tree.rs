@@ -78,4 +78,41 @@ impl<T: Copy> Tree<T> {
 
         }
     }
+
+    pub fn get_data(&self) -> Option<&T> {
+        match self.0 {
+            None => None,
+            Some((ref data, _)) => Some(data)
+        }
+    }
+
+    pub fn iter_preorder(&self) -> TreeIter<'_, T> {
+        TreeIter {nodebuffer: vec![self]}
+    }
+}
+
+pub struct TreeIter<'a, T> {
+    nodebuffer: Vec<&'a Tree<T>>,
+}
+
+impl<'a, T> Iterator for TreeIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let curitem = self.nodebuffer.pop();
+        match curitem {
+            None => None,
+            Some(ref node) => {
+                match node.0 {
+                    None => None,
+                    Some((ref data, ref children)) => {
+                        for child in children.iter().rev() {
+                            self.nodebuffer.push(child);
+                        }
+                        Some(data)
+                    }
+                }
+            }
+        }
+    }
 }
