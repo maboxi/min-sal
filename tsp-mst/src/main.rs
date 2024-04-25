@@ -122,7 +122,8 @@ fn tsp_mst(n: usize, edges: &Vec<(usize, usize, usize)>) -> Result<usize, & 'sta
         println!("Current node: index {index}, distance {distance}");
 
         // add to mst
-        mst.insert_search(Node{index: index, distance: Some(distance), predecessor: None}, &|node: &Node| node.index == curnode.predecessor.expect("Error: trying to insert node without predecessor into non-empty MST!"), &|node: &Node, mode: usize| {
+        mst.insert_search(Node{index: index, distance: Some(distance), predecessor: None}, &|node: &Node| node.index == curnode.predecessor.expect("Error: trying to insert node without predecessor into non-empty MST!"), &|_node: &Node, _mode: usize| {
+            /*
             let dist_str = node.distance.map(|d| d.to_string()).unwrap_or("∞".to_string());
             let predecessor_str = node.predecessor.map(|d| d.to_string()).unwrap_or("-".to_string());
 
@@ -134,6 +135,7 @@ fn tsp_mst(n: usize, edges: &Vec<(usize, usize, usize)>) -> Result<usize, & 'sta
             }
             
             println!("Node {}: Distance {}, Predecessor: {}", node.index, dist_str, predecessor_str);
+            */
         });
         
         // Update hash with adjacency list of current node
@@ -203,6 +205,40 @@ fn tsp_mst(n: usize, edges: &Vec<(usize, usize, usize)>) -> Result<usize, & 'sta
             Some(node) => node.index.to_string()
         }
     });
+
+
+    let mut predecessor: Option<usize> = None;
+    let mut tsp_mst_triangleeq: usize = 0;
+
+    let get_dist = |i: usize, j:usize| -> usize {
+        for (a, b, d) in edges {
+            if (*a == i && *b == j) || (*a == j && *b == i) { return *d }
+        }
+        
+        eprintln!("EDGE BETWEEN {i} and {j} NOT FOUND!");
+        0
+    };
+
+    println!("Inorder-Durchlauf:");
+    for node in mst.iter_preorder() {
+        let dist_str = node.distance.map(|d| d.to_string()).unwrap_or("∞".to_string());
+        let predecessor_str = node.predecessor.map(|d| d.to_string()).unwrap_or("-".to_string());
+        println!("  Node {}: Distance {}, Predecessor: {}", node.index, dist_str, predecessor_str);
+
+        match predecessor {
+            None => {
+                predecessor = Some(node.index);
+            },
+            Some(index_pred) => {
+                tsp_mst_triangleeq += get_dist(index_pred, node.index);
+                predecessor = Some(node.index);
+            }
+        }
+    }
+
+    tsp_mst_triangleeq += get_dist(predecessor.unwrap(), mst.get_data().unwrap().index);
+
+    println!("MST with triangle equation: {tsp_mst_triangleeq}");
 
     return result;
 }

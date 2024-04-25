@@ -67,7 +67,7 @@ impl<T: Clone> LinkedList<T> {
     pub fn delete_front(&mut self) -> Result<(), & 'static str> {
         match self.0 {
             None => Err("Linked list is empty!"),
-            Some((ref mut data, ref mut ll)) => {
+            Some((ref mut _data, ref mut ll)) => {
                 self.0 = ll.0.take();
                 Ok(())
             }
