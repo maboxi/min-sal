@@ -27,7 +27,7 @@ fn main() {
     let p_max = prices_orig.iter().max().expect("Error while finding max price");
     let p_sum = prices_orig.clone().into_iter().sum::<usize>();
 
-    let k: f32 = 10.0; // EPSILON * *p_max as f32 / N as f32;
+    let k: f32 = 1.0; // EPSILON * *p_max as f32 / N as f32;
 
     println!("N: {N}; min price: {p_min}; max price: {p_max}; sum: {p_sum}");
     println!("EPSILON: {EPSILON} => k = EPSILON * p_max / N = {k}");
@@ -61,7 +61,9 @@ fn main() {
     println!(" | a_max");
     println!("{:-<1$}", "", 8 + 6*N + 8);
 
-    let mut matrix: Vec<usize> = vec![0; N];
+    let num_or_inf = |n_opt: Option<usize>| { match n_opt { None => "∞".to_string(), Some(n) => n.to_string()}};
+
+    let mut matrix: Vec<Option<usize>> = vec![Some(0); N];
     for alpha in 1..(p_sum_adjusted + 1)
     {
         if alpha % 100 == 1 && alpha != 1{ println!(""); }
@@ -70,41 +72,48 @@ fn main() {
         {
             if i == 0
             {
-                if prices[i] == alpha { matrix.push(weights[i]); }
-                else { matrix.push(0); }
+                if prices[i] == alpha { matrix.push(Some(weights[i])); }
+                else { matrix.push(None); }
             }
             else
             {
-                let mut sum_withnew = 0;
-                if alpha >= prices[i] { 
-                    if matrix[(alpha-prices[i]) * N + i - 1] > 0 || alpha - prices[i] == 0 {
-                        sum_withnew = matrix[(alpha-prices[i]) * N + i - 1] + weights[i];
-                    }
-                    else { sum_withnew = 0; }
-                }
+                let sum_withnew = if alpha >= prices[i] {
+                    matrix[(alpha-prices[i]) * N + i - 1].map(|x| x + weights[i])
+                } else { None };
 
                 let sum_withoutnew = matrix[alpha*N + i - 1];
-                /*
-                if alpha == 39 || alpha == 38 { 
-                    print!("<{sum_withnew},{sum_withoutnew},{}>", 
-                                (if alpha >= prices[i] {alpha-prices[i]} else {0}));
-                }
-                */
 
-                if sum_withnew == 0 { matrix.push(sum_withoutnew); }
-                else if sum_withoutnew == 0 { matrix.push(sum_withnew); }
-                else { matrix.push(min(sum_withnew, sum_withoutnew)); }
+                let sum_min = match sum_withnew {
+                    None => sum_withoutnew,
+                    Some(s1) => {
+                        match sum_withnew {
+                            None => Some(s1),
+                            Some(s2) => {
+                                Some(if s1 < s2 { s1 } else { s2 })
+                            }
+                        }
+                    }
+                };
+                
+                matrix.push(sum_min);
             }
 
-            print!("{:>5} ", matrix[matrix.len() - 1]);
+            print!("{:>5} ", num_or_inf(matrix[matrix.len() - 1]));
         } 
 
-        if matrix[matrix.len() -1] != 0 && matrix[matrix.len() - 1] <= B { alpha_max = alpha; }
+        let n_last_opt = matrix[matrix.len() -1];
+        match n_last_opt {
+            None => (),
+            Some(n_last) => {
+                if n_last <= B { alpha_max = alpha; }
+            }
+        }
         println!(" | {alpha_max:>5}");
     }
 
     println!("");
     println!("a_max: {alpha_max}");
+    println!(" => p_max: {}", num_or_inf(matrix[alpha_max*N + N - 1]));
 }
 
 fn print_objects(objects: &Vec<(usize, usize)>)
@@ -112,7 +121,7 @@ fn print_objects(objects: &Vec<(usize, usize)>)
     print!("        | ");
     for i in 0..objects.len() { print!("{:>5} ", i+1); }
     println!("\n{:-<1$}", "", 10+6*objects.len());
-    print!("\nObjects | ");
+    print!("\nWeights | ");
     for (w, _) in objects { print!("{w:>5} "); }
     print!("\nPrices  | ");
     for (_, p) in objects { print!("{p:>5} "); }
