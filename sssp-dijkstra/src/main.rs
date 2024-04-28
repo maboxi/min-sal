@@ -5,8 +5,8 @@ use core::fmt::Debug;
 pub mod heap;
 use crate::heap::Heap;
 
-pub mod node;
-use crate::node::Node;
+pub mod distance;
+use crate::distance::Distance;
 
 fn main() {
     let n: usize = 9;
@@ -36,26 +36,29 @@ fn main() {
 
 
     println!("Distances to node {start} from:");
-    let mut i = 0;
-    solution.iter().for_each(|dist| {
-        if i != start {
-            println!("    Node {}: {}", i, num_or_inf(dist));
+    solution.iter().for_each(|(i, dist)| {
+        if *i != start {
+            println!("    Node {}: {}", i, dist.num_or_inf());
         }
-        i += 1;
     });
 }
 
 
-fn dijkstra(edges: Vec<(usize, usize, usize)>, n: usize, start_index: usize) -> Vec<Option<usize>>{
+fn dijkstra(edges: Vec<(usize, usize, usize)>, n: usize, start_index: usize) -> Vec<(usize, Distance)>{
     println!("\nCalculating dijkstra for start node {start_index}...");
 
-    let distances = vec![None; n];
-    let markers: [bool] = [true; n];
+    let mut nodes: Vec<(usize, Distance, bool)> = Vec::new();
 
-    let mut heap: Heap<Node> = Heap::from((0..n)
-        .map(|x| Node {index: x, distance: if x == start_index { Some(0) } else { None }})
-        .collect());
-    
+    for i in 0..n {
+        nodes.push((
+            i,
+            Distance(if i == start_index {Some(0)} else {None}),
+            true
+        ));
+    }
+
+    let mut heap: Heap<Distance> = Heap::from(nodes.iter().map(|(i, d, _)| (*d, *i)).collect());
+
     // create adjacency lists
     let mut adj_lists: Vec<Vec<(&usize, &usize)>> = vec![Vec::new(); n];
     for (i, j, d) in &edges {
@@ -63,31 +66,32 @@ fn dijkstra(edges: Vec<(usize, usize, usize)>, n: usize, start_index: usize) -> 
         adj_lists[*j].push((i, d));
     }
     
-    let mut cur_node: Node;
+    let mut cur_node: (Distance, usize);
 
     while !heap.is_empty() {
-        cur_node = heap.extract_max().unwrap();
-        let distance: usize;
-        match cur_node.distance {
-            None => continue,
-            Some(dist) => distance = dist,
+        cur_node = heap.extract_min().unwrap();
+        nodes[cur_node.1].2 = false;
+        nodes[cur_node.1].1 = cur_node.0;
+
+        println!("Took {} out of heap with distance {}", cur_node.1, cur_node.0.num_or_inf());
+
+        if cur_node.0.is_inf() {
+            println!("  Node {} has no connection to {}", cur_node.1, start_index);
+            continue;
         }
 
-        for (adj_node, adj_dist) in &adj_lists[cur_node.index] {
-            if markers[adj_node] {
-                let new_dist = match distances[adj_node] {
-                    None => Some(distance + adj_dist),
-                    Some(curdist) => if curdist > distance + adj_dist { Some(distance + adj_dist)) } else { None }
-                }
+        for (adj_node, adj_dist) in &adj_lists[cur_node.1] {
+            if nodes[**adj_node].2{
+                let new_dist = cur_node.0 + *adj_dist;
 
-                if !new_dist.is_none() {
-
+                if !new_dist.is_inf() {
+                    heap.decrease_key(**adj_node, new_dist);
                 }
             }
         }
     }
 
-    return distances;
+    return nodes.iter().map(|(i, d, _)| (*i, *d)).collect();
 }
 
 fn get<T: FromStr>(preamble: String, default: T) -> T where <T as FromStr>::Err: Debug {
@@ -97,5 +101,3 @@ fn get<T: FromStr>(preamble: String, default: T) -> T where <T as FromStr>::Err:
     stdin().read_line(&mut userinput).expect("Error reading user input!");
     userinput.trim().parse::<T>().unwrap_or(default)
 }
-
-fn num_or_inf(n_opt: &Option<usize>) -> String { match n_opt { None => "∞".to_string(), Some(n) => n.to_string()}}
