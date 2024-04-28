@@ -48,10 +48,10 @@ impl<K: PartialOrd + Debug + Copy> Heap<K> {
         let right = root*2 + 2;
         let l = self.heap.len() - 1;
 
-        if left <= l && self.get_key(left) < self.get_key(root) { smallest = left; }
+        if left <= l && self.get_key_from_heap(left) < self.get_key_from_heap(root) { smallest = left; }
         else { smallest = root; }
 
-        if right <= l && self.get_key(right) < self.get_key(smallest) { smallest = right; }
+        if right <= l && self.get_key_from_heap(right) < self.get_key_from_heap(smallest) { smallest = right; }
 
         if smallest != root {
             self.swap_heapobjects(root, smallest);
@@ -96,7 +96,7 @@ impl<K: PartialOrd + Debug + Copy> Heap<K> {
 
             parent = curpos / 2;
 
-            if self.get_key(curpos) < self.get_key(parent) { self. swap_heapobjects(curpos, parent); }
+            if self.get_key_from_heap(curpos) < self.get_key_from_heap(parent) { self. swap_heapobjects(curpos, parent); }
 
             curpos = parent;
         }
@@ -112,7 +112,11 @@ impl<K: PartialOrd + Debug + Copy> Heap<K> {
         self.heap.len() == 0
     }
 
-    pub fn get_key(&self, heap_index: usize) -> &K {
+    pub fn get_key(&self, value: usize) -> K {
+        self.memory[value].0
+    }
+
+    fn get_key_from_heap(&self, heap_index: usize) -> &K {
         &self.memory[self.heap[heap_index]].0
     }
 }

@@ -81,12 +81,20 @@ fn dijkstra(edges: Vec<(usize, usize, usize)>, n: usize, start_index: usize) -> 
         }
 
         for (adj_node, adj_dist) in &adj_lists[cur_node.1] {
+            print!("    Checking adj node {} with adj dist {}... ", adj_node, adj_dist);
             if nodes[**adj_node].2{
-                let new_dist = cur_node.0 + *adj_dist;
+                let adj_new_dist = cur_node.0 + *adj_dist;
 
-                if !new_dist.is_inf() {
-                    heap.decrease_key(**adj_node, new_dist);
+                if !adj_new_dist.is_inf() {
+                    let adj_cur_dist = heap.get_key(**adj_node); 
+                    if adj_new_dist < adj_cur_dist {
+                        print!("Updating from distance {} to {}", adj_cur_dist, adj_new_dist);
+                        heap.decrease_key(**adj_node, adj_new_dist);
+                    } else {
+                        print!("Key in heap: {} shortert than new distance {}", adj_cur_dist, adj_new_dist);
+                    }
                 }
+                println!("");
             }
         }
     }
