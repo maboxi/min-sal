@@ -17,19 +17,12 @@ impl<K: PartialOrd + Debug + Copy> Heap<K> {
     }
 
     fn build_heap(&mut self, kvpairs: Vec<(K, usize)>) {
-
-        println!("KV-Pairs:");
-        for kvp in &kvpairs { println!("    {:?}", kvp); }
-
         for (i, (k,v)) in kvpairs.iter().enumerate() {
             self.heap.push(*v);
             self.memory.push((*k, i, true));
         }
 
         let n = self.heap.len();
-        println!("Heap: {:?}", self.heap);
-        println!("Memory:");
-        for mem_item in &self.memory { println!("    {:?}", mem_item); }
  
         let mut i = (n-2) / 2;
         loop {
@@ -37,7 +30,6 @@ impl<K: PartialOrd + Debug + Copy> Heap<K> {
             if i == 0 { break; }
             i -= 1;
         }
-        println!("Heap building complete!");
     }
 
     fn heapify(&mut self, root: usize) {
@@ -84,7 +76,6 @@ impl<K: PartialOrd + Debug + Copy> Heap<K> {
             return;
         }
 
-        println!("Decreasing key of {} from {:?} to {:?}...", value, cur_key, new_key);
         self.memory[value].0 = new_key;
 
         let mut curpos = self.memory[value].1;

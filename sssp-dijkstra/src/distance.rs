@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::ops::Add;
 use std::fmt::Debug;
+use std::fmt;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Distance(pub Option<usize>);
@@ -9,6 +10,12 @@ impl Distance {
     pub fn is_inf(&self) -> bool { self.0.is_none() }
     pub fn num_or_inf(&self) -> String {
         match self.0 { None => "∞".to_string(), Some(n) => n.to_string()}}
+}
+
+impl fmt::Display for Distance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.num_or_inf())
+    }
 }
 
 impl PartialOrd for Distance {

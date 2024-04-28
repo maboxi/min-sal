@@ -38,7 +38,7 @@ fn main() {
     println!("Distances to node {start} from:");
     solution.iter().for_each(|(i, dist)| {
         if *i != start {
-            println!("    Node {}: {}", i, dist.num_or_inf());
+            println!("    Node {}: {}", i, dist);
         }
     });
 }
@@ -94,10 +94,14 @@ fn dijkstra(edges: Vec<(usize, usize, usize)>, n: usize, start_index: usize) -> 
                         print!("Key in heap: {} shortert than new distance {}", adj_cur_dist, adj_new_dist);
                     }
                 }
-                println!("");
+            } else {
+                print!("already found shortest path!");
             }
+            println!("");
         }
     }
+
+    println!("\nDijkstra completed!");
 
     return nodes.iter().map(|(i, d, _)| (*i, *d)).collect();
 }
