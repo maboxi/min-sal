@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 use std::fmt::Debug;
 use std::fmt;
 
@@ -10,7 +10,19 @@ impl<T: Copy> Distance<T> {
     pub fn is_inf(&self) -> bool { self.0.is_none() }
     pub fn from_ref(n: &T) -> Distance<T> { Distance(Some(*n)) }
     pub fn from(n: T) -> Distance<T> { Distance(Some(n)) }
+
+    pub fn from_other<U, F>(other_dist: &Distance<U>, cast: F) -> Distance<T> 
+    where
+        F: FnOnce(&U) -> T
+    {
+        match &other_dist.0 {
+            None => Distance(None),
+            Some(d) => Distance(Some(cast(d)))
+        }
+    }
+
     pub fn inf() -> Distance<T> { Distance(None) }
+    pub fn value(&self) -> T { self.0.unwrap() }
 }
 
 impl<T: fmt::Display> Distance<T> {
@@ -78,6 +90,17 @@ impl<T: Add<T, Output = T>> Add<T> for Distance<T> {
         match self.0 {
             None => Distance(None),
             Some(d) => Distance(Some(d + other))
+        }
+    }
+}
+
+impl<T: Sub<T, Output=T>> Sub<T> for Distance<T> {
+    type Output = Distance<T>;
+
+    fn sub(self, other: T) -> Self::Output {
+        match self.0 {
+            None => Distance(None),
+            Some(d) => Distance(Some(d - other))
         }
     }
 }
