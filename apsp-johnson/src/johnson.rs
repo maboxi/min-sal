@@ -5,6 +5,9 @@ use crate::util::print_matrix;
 
 pub fn johnson(edges: &Vec<(usize, usize, i64)>, n: usize) -> Result<Vec<Distance<i64>>, & 'static str>{
 
+    /* 
+        Adding edges for dummy node with dist 0 to edge list for calculation of adjusting values
+    */
     let mut edges_withdummy = edges.clone();
 
     for i in 0..n { edges_withdummy.push((n, i, 0)); }
@@ -25,15 +28,31 @@ pub fn johnson(edges: &Vec<(usize, usize, i64)>, n: usize) -> Result<Vec<Distanc
     println!("Shift values (h(i)): ");
     shift_values.iter().enumerate().filter(|(i, _)| *i < n).for_each(|(i, d)| println!("\t{: >2}: {: >4}", i, d));
 
+
+    /*
+        Adjust edges: w'(u,v) = w(u,v) + shiftvalues(u) - shiftvalues(v)
+     */
+
     let edges_adjusted: Vec<(usize, usize, usize)> = edges.iter()
         .map(|(u, v,d)| (*u, *v, (d + shift_values[*u] - shift_values[*v]) as usize))
         .collect();
     
+
+    /*
+        Calculate dijkstra for all nodes using adjusted edge weights
+     */
+
     let mut apsp_adjusted: Vec<Distance<i64>> = dijkstra_apsp(&edges_adjusted, n).iter()
         .map(|dist| Distance::from_other(dist, |n| *n as i64)).collect();
 
     println!("Dijkstra results before readjustment:");
     print_matrix(&apsp_adjusted, n);
+
+
+    /*
+        Re-adjusting the edge distances to match the original graph:
+            d(u,v) = d_adjusted(u,v) + shift_values(v) - shift_values(u)
+     */
 
     for u in 0..n {
         for v in 0..n {
