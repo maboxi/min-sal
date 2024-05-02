@@ -42,7 +42,7 @@ fn main() {
         (43, 27),
         (26, 45)
     ].into_iter().collect();
-    let N: usize = objects.len();
+    let const_n: usize = objects.len();
 
     let epsilon: f32 = 0.1;
     
@@ -52,16 +52,16 @@ fn main() {
     let p_max = prices_orig.iter().max().expect("Error while finding max price");
     let p_sum = prices_orig.clone().into_iter().sum::<usize>();
 
-    let B = userinput_or_default(650, "Value B (max. weight) (default 650): ");
-    let k: f32 = userinput_or_default(epsilon * *p_max as f32 / N as f32, "Input custom value for scaling constant 'k' or leave empty for default value: ");
+    let const_b = userinput_or_default(650, "Value B (max. weight) (default 650): ");
+    let const_k: f32 = userinput_or_default(epsilon * *p_max as f32 / const_n as f32, "Input custom value for scaling constant 'k' or leave empty for default value: ");
 
     println!("Constants:");
     println!("    min price: {p_min}; max price: {p_max}; sum: {p_sum}");
-    println!("    N: {N}; B: {B}; ε: {epsilon}; k: {k}");
+    println!("    N: {const_n}; B: {const_b}; ε: {epsilon}; k: {const_k}");
 
     // conversion
     let objects: Vec<(usize, usize)> = objects.into_iter().map(|(w,p)| {
-        let p_: f32 = p as f32 / k;
+        let p_: f32 = p as f32 / const_k;
         (w, p_ as usize)
         }).collect();
 
@@ -108,17 +108,17 @@ fn main() {
 
     println!("\n");
     if print_graph {
-        println!("Matrix: {}x{}\n", p_sum_adjusted, N);
+        println!("Matrix: {}x{}\n", p_sum_adjusted, const_n);
         print!("         | ");
-        for i in 0..N { print!("{:>5} ", i+1); }
+        for i in 0..const_n { print!("{:>5} ", i+1); }
         println!(" | a_max");
-        println!("{:-<1$}", "", 11 + 6*N + 8);
+        println!("{:-<1$}", "", 11 + 6*const_n + 8);
     }
 
     let num_or_inf = |n_opt: Option<usize>| { match n_opt { None => "∞".to_string(), Some(n) => n.to_string()}};
 
-    let mut matrix: Vec<Option<usize>> = vec![Some(0); N];
-    let ind = |i: usize, j: usize| i*N + j;
+    let mut matrix: Vec<Option<usize>> = vec![Some(0); const_n];
+    let ind = |i: usize, j: usize| i*const_n + j;
 
     let mut linestr: String;
     let mut hasnoninfvalues: bool;
@@ -131,9 +131,9 @@ fn main() {
 
             if print_graph {
                 if alpha % 100 == 1 && alpha != 1 { println!(""); }
-                write!(&mut linestr, "{alpha:>8} | ");
+                write!(&mut linestr, "{alpha:>8} | ").unwrap();
             }
-            for i in 0..N
+            for i in 0..const_n
             {
                 if i == 0
                 {
@@ -151,7 +151,7 @@ fn main() {
                     let sum_min = match sum_withnew {
                         None => sum_withoutnew,
                         Some(s1) => {
-                            match sum_withnew {
+                            match sum_withoutnew {
                                 None => Some(s1),
                                 Some(s2) => {
                                     Some(if s1 < s2 { s1 } else { s2 })
@@ -171,7 +171,7 @@ fn main() {
             match n_last_opt {
                 None => (),
                 Some(n_last) => {
-                    if n_last <= B { alpha_max = alpha; }
+                    if n_last <= const_b { alpha_max = alpha; }
                 }
             }
             writeln!(&mut linestr, " | {:>5}", alpha_max).unwrap();
@@ -184,14 +184,14 @@ fn main() {
 
     println!("Solution: adjusted price sum {} with weight {}\n",
         alpha_max,
-        num_or_inf(matrix[alpha_max*N + N - 1]));
+        num_or_inf(matrix[alpha_max*const_n + const_n - 1]));
 
     // Backtracking of used objects
-    let mut cur_index = N - 1;
+    let mut cur_index = const_n - 1;
     let mut cur_pricesum = alpha_max;
     let mut orig_pricesum = 0;
-    let matrix_val = |row, col| matrix[row * N + col];
-    let mut markers = vec![false; N];
+    let matrix_val = |row, col| matrix[row * const_n + col];
+    let mut markers = vec![false; const_n];
 
     loop {
         if cur_index == 0 {
@@ -217,6 +217,6 @@ fn main() {
         if !marker {continue; }
         println!("              {: >5} ({: >5}, {: >5}, {: >5})", i + 1, weights[i], prices[i], prices_orig[i]);
     }
-    println!("          => Sum:    {: >5}  {: >5}  {: >5}", num_or_inf(matrix_val(alpha_max, N-1)), alpha_max, orig_pricesum);
+    println!("          => Sum:    {: >5}  {: >5}  {: >5}", num_or_inf(matrix_val(alpha_max, const_n-1)), alpha_max, orig_pricesum);
 
 }
