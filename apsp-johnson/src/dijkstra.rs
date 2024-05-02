@@ -31,7 +31,6 @@ pub fn dijkstra(edges: &Vec<(usize, usize, usize)>, n: usize, start_index: usize
     let mut adj_lists: Vec<Vec<(&usize, &usize)>> = vec![Vec::new(); n];
     for (i, j, d) in edges {
         adj_lists[*i].push((j, d));
-        adj_lists[*j].push((i, d));
     }
     
     let mut cur_node: (Distance<usize>, usize);
