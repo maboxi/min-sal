@@ -18,9 +18,7 @@ fn userinput_or_default<T: FromStr>(default: T, preamble: &str) -> T {
 }
 
 fn main() {
-    const N: usize = 8;
-    const B: usize = 645;
-
+    /*
     let objects: Vec<(usize, usize)> = 
     [
     // Weight, Price
@@ -33,7 +31,19 @@ fn main() {
         (148, 48),
         (249, 38)
     ].into_iter().collect();
-    
+    */
+
+    let objects: Vec<(usize, usize)> = [
+        (75, 34),
+        (34, 12),
+        (7, 14),
+        (58, 16),
+        (72, 23),
+        (43, 27),
+        (26, 45)
+    ].into_iter().collect();
+    let N: usize = objects.len();
+
     let epsilon: f32 = 0.1;
     
     let prices_orig: Vec<_> = objects.clone().into_iter().map(|(_,p)| {p}).collect();
@@ -42,6 +52,7 @@ fn main() {
     let p_max = prices_orig.iter().max().expect("Error while finding max price");
     let p_sum = prices_orig.clone().into_iter().sum::<usize>();
 
+    let B = userinput_or_default(650, "Value B (max. weight) (default 650): ");
     let k: f32 = userinput_or_default(epsilon * *p_max as f32 / N as f32, "Input custom value for scaling constant 'k' or leave empty for default value: ");
 
     println!("Constants:");
@@ -70,7 +81,8 @@ fn main() {
     for p in &prices { print!("{:>5} ", *p); }
     println!("\n");
 
-    print!("Print graph? y/N");
+    // print graph?
+    print!("Print graph? (y/N) ");
     stdout().flush().expect("Error while flushing stdout!");
     let mut userinput = String::new();
     stdin().read_line(&mut userinput).expect("Error while reading user input!");
@@ -78,6 +90,17 @@ fn main() {
     let ui_trimmed = userinput.trim();
 
     let print_graph: bool = ui_trimmed == "y" || ui_trimmed == "yes";
+
+    // print lines without non inf values?
+    print!("Print lines without non inf values? (y/N) ");
+    stdout().flush().expect("Error while flushing stdout!");
+    let mut userinput = String::new();
+    stdin().read_line(&mut userinput).expect("Error while reading user input!");
+    println!("");
+    let ui_trimmed = userinput.trim();
+
+    let print_inf_lines: bool = ui_trimmed == "y" || ui_trimmed == "yes";
+
 
     // Start of algorithm
     println!("Calculating solution...");
@@ -96,53 +119,65 @@ fn main() {
 
     let mut matrix: Vec<Option<usize>> = vec![Some(0); N];
     let ind = |i: usize, j: usize| i*N + j;
-    for alpha in 1..(p_sum_adjusted + 1)
+
+    let mut linestr: String;
+    let mut hasnoninfvalues: bool;
+
     {
-        if print_graph {
-            if alpha % 100 == 1 && alpha != 1 { println!(""); }
-            print!("{alpha:>8} | ");
-        }
-        for i in 0..N
-        {
-            if i == 0
-            {
-                if prices[i] == alpha { matrix.push(Some(weights[i])); }
-                else { matrix.push(None); }
+        use std::fmt::Write;
+        for alpha in 1..(p_sum_adjusted + 1) {
+            linestr = String::new();
+            hasnoninfvalues = false;
+
+            if print_graph {
+                if alpha % 100 == 1 && alpha != 1 { println!(""); }
+                write!(&mut linestr, "{alpha:>8} | ");
             }
-            else
+            for i in 0..N
             {
-                let sum_withnew = if alpha >= prices[i] {
-                    matrix[ind(alpha-prices[i], i - 1)].map(|x| x + weights[i])
-                } else { None };
+                if i == 0
+                {
+                    if prices[i] == alpha { matrix.push(Some(weights[i])); }
+                    else { matrix.push(None); }
+                }
+                else
+                {
+                    let sum_withnew = if alpha >= prices[i] {
+                        matrix[ind(alpha-prices[i], i - 1)].map(|x| x + weights[i])
+                    } else { None };
 
-                let sum_withoutnew = matrix[ind(alpha,i - 1)];
+                    let sum_withoutnew = matrix[ind(alpha,i - 1)];
 
-                let sum_min = match sum_withnew {
-                    None => sum_withoutnew,
-                    Some(s1) => {
-                        match sum_withnew {
-                            None => Some(s1),
-                            Some(s2) => {
-                                Some(if s1 < s2 { s1 } else { s2 })
+                    let sum_min = match sum_withnew {
+                        None => sum_withoutnew,
+                        Some(s1) => {
+                            match sum_withnew {
+                                None => Some(s1),
+                                Some(s2) => {
+                                    Some(if s1 < s2 { s1 } else { s2 })
+                                }
                             }
                         }
-                    }
-                };
+                    };
 
-                matrix.push(sum_min);
+                    matrix.push(sum_min);
+                    if sum_min.is_some() { hasnoninfvalues = true; }
+                }
+
+                write!(&mut linestr, "{:>5} ", num_or_inf(matrix[matrix.len() - 1])).unwrap();
+            } 
+
+            let n_last_opt = matrix[matrix.len() -1];
+            match n_last_opt {
+                None => (),
+                Some(n_last) => {
+                    if n_last <= B { alpha_max = alpha; }
+                }
             }
+            writeln!(&mut linestr, " | {:>5}", alpha_max).unwrap();
 
-            if print_graph { print!("{:>5} ", num_or_inf(matrix[matrix.len() - 1])); }
-        } 
-
-        let n_last_opt = matrix[matrix.len() -1];
-        match n_last_opt {
-            None => (),
-            Some(n_last) => {
-                if n_last <= B { alpha_max = alpha; }
-            }
+            if print_graph && (print_inf_lines || hasnoninfvalues) {print!("{}", linestr); }
         }
-        if print_graph { println!(" | {alpha_max:>5}"); }
     }
 
     if print_graph {println!("") };
@@ -156,7 +191,7 @@ fn main() {
     let mut cur_pricesum = alpha_max;
     let mut orig_pricesum = 0;
     let matrix_val = |row, col| matrix[row * N + col];
-    let mut markers = [false; N];
+    let mut markers = vec![false; N];
 
     loop {
         if cur_index == 0 {
