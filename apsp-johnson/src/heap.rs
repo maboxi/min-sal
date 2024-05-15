@@ -16,8 +16,8 @@ impl<K: PartialOrd + Debug + Copy> Heap<K> {
         instance
     }
 
-    fn build_heap(&mut self, kvpairs: Vec<(K, usize)>) {
-        for (i, (k,v)) in kvpairs.iter().enumerate() {
+    fn build_heap(&mut self, key_value_pairs: Vec<(K, usize)>) {
+        for (i, (k,v)) in key_value_pairs.iter().enumerate() {
             self.heap.push(*v);
             self.memory.push((*k, i, true));
         }
