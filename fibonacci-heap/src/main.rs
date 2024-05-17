@@ -2,59 +2,70 @@ pub mod fibonacci_heap;
 use crate::fibonacci_heap::FibonacciHeap;
 
 use std::{fs::{self, File}, io::{Error, Write}};
-use graphviz_rust::{cmd::Format, exec, printer::{DotPrinter, PrinterContext}};
-
+use graphviz_rust::{cmd::Format, exec, printer::PrinterContext};
 
 
 fn main() {
     let mut fheap = FibonacciHeap::new();
-    let timestamp = format!("{}", chrono::prelude::Utc::now().format("%Y%m%d-%H%M"));
-    let mut output_counter: usize = 0;
-    println!("Timestamp: {timestamp}");
+    let mut fheap_printer = FibHeapPrinter::new();
 
     let data = [23, 7, 3, 17, 24, 18, 52, 38, 30, 26, 46, 39, 41, 35].into_iter().collect::<Vec<usize>>();
 
-    for (i, data) in data.iter().enumerate() {
-        println!("Inserting {data} ({i})");
+    for data in &data {
         fheap.insert(*data);
     }
 
-    output_fibheap(&mut fheap, &timestamp, &mut output_counter).unwrap();
-    println!("ExtractMin: {:?}", fheap.extract_min());
-    output_fibheap(&mut fheap, &timestamp, &mut output_counter).unwrap();
-
-    /*let heap_size = fheap.size();
-    for i in 0..heap_size {
+    let heap_size = fheap.size();
+    for _i in 0..heap_size {
         println!("ExtractMin: {:?}", fheap.extract_min());
-
-        output_fibheap(&fheap, &timestamp, &mut output_counter).unwrap();
-
-    }*/
+        //fheap_printer.print(&mut fheap).unwrap();
+    }
 }
 
-fn output_fibheap(fheap: &mut FibonacciHeap, timestamp: &String, counter: &mut usize) -> Result<(), Error> {
-    let graph = fheap.to_graphviz_graph();
-    //println!("Graph: {}", graph.print(&mut PrinterContext::default()));
-    let format = Format::Svg;
-    let graph_svg = exec(graph, &mut PrinterContext::default(), vec![format.into()])?;
+struct FibHeapPrinter {
+    timestamp: String,
+    counter: usize,
+    output_folder: String,
+}
 
-    //let output_folder_path = format!("./output/{}", timestamp);
-    let output_folder_path = format!("./output");
-    let filename = format!("{}/output-{}.svg", output_folder_path, counter);
+impl FibHeapPrinter {
+    fn new() -> Self { 
+        //let output_folder_path = format!("./output/{}", timestamp);
+        let printer = FibHeapPrinter {
+            timestamp: format!("{}", chrono::prelude::Utc::now().format("%Y%m%d-%H%M")),
+            counter: 0,
+            output_folder: format!("./output"),
+        };
 
-    match fs::create_dir_all(output_folder_path) {
-        Ok(_) => (),
-        Err(err) => {
-            println!("Error creating output folder: {err:?}");
-        }
+        println!("Created FibHeap Printer with timestamp: {}", printer.timestamp);
+        fs::remove_dir_all(&printer.output_folder).unwrap();
+
+        printer
     }
 
-    *counter += 1;
-    
-    println!("Writing svg to file {filename}");
+    fn print(&mut self, fheap: &mut FibonacciHeap) -> Result<(), Error> {
+        fheap.update_depths();
+        let graph = fheap.to_graphviz_graph();
+        //println!("Graph: {}", graph.print(&mut PrinterContext::default()));
+        let format = Format::Svg;
+        let graph_svg = exec(graph, &mut PrinterContext::default(), vec![format.into()])?;
 
-    let mut file = File::create(filename)?;
-    file.write_all(graph_svg.as_slice())?;
+        let filename = format!("{}/output-{}.svg", self.output_folder, self.counter);
 
-    Ok(())
+        match fs::create_dir_all(&self.output_folder) {
+            Ok(_) => (),
+            Err(err) => {
+                println!("Error creating output folder: {err:?}");
+            }
+        }
+
+        self.counter += 1;
+        
+        println!("Writing svg to file {filename}");
+
+        let mut file = File::create(filename)?;
+        file.write_all(graph_svg.as_slice())?;
+
+        Ok(())
+    }
 }

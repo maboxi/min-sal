@@ -13,21 +13,15 @@ struct FibonacciHeapElement {
     depth: usize,
 }
 
-impl FibonacciHeapElement {
-    fn to_string(&self) -> String {
-        format!("Node: v: {}, deg: {}, m: {}, p: {:?}, c: {:?}, l: {}, r: {}, d: {}", 
-                self.value, self.degree, self.marked, self.parent, self.child, self.left, self.right, self.depth)
-    }
-}
-
 pub struct FibonacciHeap {
     elements: Vec<FibonacciHeapElement>,
     h_min: Option<usize>,
+    max_depth: usize,
 }
 
 impl FibonacciHeap {
     pub fn new() -> Self {
-        FibonacciHeap { elements: vec![], h_min: None, }
+        FibonacciHeap { elements: vec![], h_min: None, max_depth: 0, }
     }
 
     pub fn insert(&mut self, data: usize) {
@@ -140,7 +134,7 @@ impl FibonacciHeap {
     fn consolidate(&mut self) {
         let mut a: Vec<Option<usize>> = vec![None; self.size()];
 
-        println!("consolidating heap...");
+        //println!("consolidating heap...");
 
         if let Some(h_min) = self.h_min {
             let w_end = self.elements[h_min].left;
@@ -150,10 +144,10 @@ impl FibonacciHeap {
                 let mut x: usize = w_cur;
                 let w_next = self.elements[x].right;
                 let mut d = self.elements[w_cur].degree;
-                println!("\tconsolidating {x} (value {}) with deg {d}, {}", self.elements[x].value, self.elements[x].right);
+                //println!("\tconsolidating {x} (value {}) with deg {d}, {}", self.elements[x].value, self.elements[x].right);
 
                 while let Some(mut y) = a[d] {
-                    println!("\t\tdegree {d} conflict: {x} vs {y}");
+                    //println!("\t\tdegree {d} conflict: {x} vs {y}");
 
                     if self.elements[x].value > self.elements[y].value {
                         // exchange x and y
@@ -168,19 +162,19 @@ impl FibonacciHeap {
                     d = d + 1;
                 }
 
-                println!("\t\tnow: a[{d}] = {x}");
+                //println!("\t\tnow: a[{d}] = {x}");
                 a[d] = Some(x);
                 
                 if w_cur == w_end { break; }
                 w_cur = w_next;
-                println!("\tnext: {w_cur}");
+                //println!("\tnext: {w_cur}");
             }
         
             self.h_min = None;
 
-            for (i, a_i) in a.iter().enumerate() {
+            /*for (i, a_i) in a.iter().enumerate() {
                 println!("a[{i}]: {a_i:?}");
-            }
+            }*/
 
             // create root ll
             for a_i in a {
@@ -188,12 +182,6 @@ impl FibonacciHeap {
                     if let Some(h_min) = self.h_min {
                         // root ll already exists
                         let h_min_left = self.elements[h_min].left;
-                        //let h_min_right = self.elements[h_min].right;
-
-                        println!("LL not empty:");
-                        println!("\th_l {}: {}", h_min_left, self.elements[h_min_left].to_string());
-                        println!("\ta_i {}: {}", a_i, self.elements[a_i].to_string());
-                        //println!("\th_r {}: {}", h_min_right, self.elements[h_min_right].to_string());
 
                         self.elements[a_i].left = h_min_left;
                         self.elements[h_min_left].right = a_i;
@@ -201,21 +189,15 @@ impl FibonacciHeap {
                         self.elements[a_i].right = h_min;
                         self.elements[h_min].left = a_i;
 
-                        println!("\th_l {}: {}", h_min_left, self.elements[h_min_left].to_string());
-                        println!("\ta_i {}: {}", a_i, self.elements[a_i].to_string());
-                        //println!("\th_r {}: {}", h_min_right, self.elements[h_min_right].to_string());
-
                         if self.elements[a_i].value < self.elements[h_min].value {
                             self.h_min = Some(a_i);
                         }
                     } else {
                         // root ll is empty
-                        println!("LL empty:");
-                        println!("\ta_i {}: {}", a_i, self.elements[a_i].to_string());
                         self.elements[a_i].right = a_i;
                         self.elements[a_i].left = a_i;
                         self.elements[a_i].parent = None;
-                        println!("\ta_i {}: {}", a_i, self.elements[a_i].to_string());
+
                         self.h_min = Some(a_i);
                     }
                 }
@@ -260,11 +242,6 @@ impl FibonacciHeap {
     fn update_references(&mut self, z: usize, z_old: usize) {
         // update all references to u
 
-        // check if left element was the swapped one
-        if self.elements[z].left == z {
-
-        }
-
         let z_right = self.elements[z].right;
         let z_left = self.elements[z].left;
         self.elements[z_right].left = z;
@@ -291,9 +268,33 @@ impl FibonacciHeap {
             }
         }
     }
+
+    pub fn update_depths(&mut self) {
+        if let Some(h_min) = self.h_min {
+            // update depths
+            let mut lls: Vec<(usize, usize)> = vec![(h_min, 0)];
+            self.max_depth = 0;
+
+            while let Some((ll_start, cur_depth)) = lls.pop() {
+                let mut ll_cur = ll_start;
+
+                if cur_depth > self.max_depth { self.max_depth = cur_depth; }
+
+                loop {
+                    if let Some(child) = self.elements[ll_cur].child {
+                        lls.push((child, cur_depth + 1));
+                    } 
+
+                    self.elements[ll_cur].depth = cur_depth;
+
+                    ll_cur = self.elements[ll_cur].right;
+                    if ll_cur == ll_start { break; }
+                }
+            }
+        }
+   }
     
-    pub fn to_graphviz_graph(&mut self) -> Graph {
-        // TODO: graphviz stuff
+    pub fn to_graphviz_graph(&self) -> Graph {
         let mut graph = Graph::DiGraph {
             id: id!("fibheap"),
             strict: true,
@@ -301,6 +302,8 @@ impl FibonacciHeap {
         };
 
         graph.add_stmt(stmt!(attr!("rankdir", "BT")));
+        graph.add_stmt(stmt!(attr!("nodesep", "0.7")));
+        graph.add_stmt(stmt!(attr!("ranksep", "0.7")));
 
         let mut subgraph = Subgraph {
             id: id!("fibheap_sg"),
@@ -344,40 +347,16 @@ impl FibonacciHeap {
                 }
             }
            
-            // update depths
-            let mut lls: Vec<(usize, usize)> = vec![(h_min, 0)];
-            let mut max_depth = 0;
-
-            while let Some((ll_start, cur_depth)) = lls.pop() {
-                println!("Setting depth for ll with start = {} [{}] to {}", self.elements[ll_start].value, ll_start, cur_depth);
-                let mut ll_cur = ll_start;
-
-                if cur_depth > max_depth { max_depth = cur_depth; }
-
-                loop {
-                    println!("{} child: {:?}", ll_cur, self.elements[ll_cur].child);
-                    if let Some(child) = self.elements[ll_cur].child {
-                        lls.push((child, cur_depth + 1));
-                    } 
-
-                    self.elements[ll_cur].depth = cur_depth;
-                    self.elements[ll_cur].marked = true;
-
-                    ll_cur = self.elements[ll_cur].right;
-                    if ll_cur == ll_start { break; }
-                }
-            }
-
-            for cur_depth in 0..(max_depth + 1) {
+            for cur_depth in 0..(self.max_depth + 1) {
                 let mut depth_subgraph = Subgraph{
                     id: id!(format!("sg_ll_{cur_depth}")),
                     stmts: vec![]
                 };
-                depth_subgraph.stmts.push(stmt!(attr!("rank", "same")));
+                depth_subgraph.stmts.push(stmt!(attr!("rank", "same"))); 
 
                 for (i, elem) in self.elements.iter().enumerate().filter(|(_,elem)| elem.depth == cur_depth) {
-                    let label = format!("\"{} [{}]\ndeg: {}\ndepth: {}\nl: {}, r: {}\np: {:?}, c: {:?}\"",
-                                                elem.value, i, elem.degree, elem.depth, elem.left, elem.right, elem.parent, elem.child);
+                    let label = format!("\"{} [{}]\ndeg: {}\n\"",
+                                                elem.value, i, elem.degree);
                     if h_min == i {
                         depth_subgraph.stmts.push(stmt!(
                             Node { 
