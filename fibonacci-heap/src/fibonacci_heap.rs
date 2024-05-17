@@ -1,12 +1,5 @@
 use graphviz_rust::dot_generator::*;
 use graphviz_rust::dot_structures::*;
-use graphviz_rust::{
-    attributes::*,
-    cmd::{CommandArg, Format},
-    exec, exec_dot, parse,
-    printer::{DotPrinter, PrinterContext},
-};
-
 
 #[derive(Clone, Copy)]
 struct FibonacciHeapElement {
@@ -17,6 +10,14 @@ struct FibonacciHeapElement {
     child: Option<usize>,
     left: usize,
     right: usize,
+    depth: usize,
+}
+
+impl FibonacciHeapElement {
+    fn to_string(&self) -> String {
+        format!("Node: v: {}, deg: {}, m: {}, p: {:?}, c: {:?}, l: {}, r: {}, d: {}", 
+                self.value, self.degree, self.marked, self.parent, self.child, self.left, self.right, self.depth)
+    }
 }
 
 pub struct FibonacciHeap {
@@ -38,6 +39,7 @@ impl FibonacciHeap {
             child: None,
             left: 0,
             right: 0,
+            depth: 0,
         };
 
         let new_i = self.elements.len();
@@ -48,14 +50,19 @@ impl FibonacciHeap {
                     panic!("H_min cannot be None if there are elements in the heap!");
                 }
                 // neue wurzelliste
-                new_elem.left = 0;
-                new_elem.right= 0;
-                self.h_min = Some(0);
+                new_elem.left = new_i;
+                new_elem.right= new_i;
+                self.h_min = Some(new_i);
             },
             Some(head) => {
-                new_elem.right = self.elements[head].right;
-                new_elem.left = head;
-                self.elements[head].right = new_i;
+                let head_left = self.elements[head].left;
+
+                new_elem.left = head_left;
+                self.elements[head_left].right = new_i;
+
+                new_elem.right = head;
+                self.elements[head].left = new_i;
+
                 if self.elements[head].value > new_elem.value {
                     self.h_min = Some(new_i);
                 }
@@ -128,6 +135,126 @@ impl FibonacciHeap {
         } else {
             return None;
         }
+    } 
+
+    fn consolidate(&mut self) {
+        let mut a: Vec<Option<usize>> = vec![None; self.size()];
+
+        println!("consolidating heap...");
+
+        if let Some(h_min) = self.h_min {
+            let w_end = self.elements[h_min].left;
+            let mut w_cur = h_min;
+
+            loop {
+                let mut x: usize = w_cur;
+                let w_next = self.elements[x].right;
+                let mut d = self.elements[w_cur].degree;
+                println!("\tconsolidating {x} (value {}) with deg {d}, {}", self.elements[x].value, self.elements[x].right);
+
+                while let Some(mut y) = a[d] {
+                    println!("\t\tdegree {d} conflict: {x} vs {y}");
+
+                    if self.elements[x].value > self.elements[y].value {
+                        // exchange x and y
+                        //println!("\t\t\texchange {x}({}) and {y}({})", self.elements[x].value, self.elements[y].value);
+                        let x_tmp = x;
+                        x = y;
+                        y = x_tmp;
+                    }
+
+                    self.link(y,x);
+                    a[d] = None;
+                    d = d + 1;
+                }
+
+                println!("\t\tnow: a[{d}] = {x}");
+                a[d] = Some(x);
+                
+                if w_cur == w_end { break; }
+                w_cur = w_next;
+                println!("\tnext: {w_cur}");
+            }
+        
+            self.h_min = None;
+
+            for (i, a_i) in a.iter().enumerate() {
+                println!("a[{i}]: {a_i:?}");
+            }
+
+            // create root ll
+            for a_i in a {
+                if let Some(a_i) = a_i {
+                    if let Some(h_min) = self.h_min {
+                        // root ll already exists
+                        let h_min_left = self.elements[h_min].left;
+                        //let h_min_right = self.elements[h_min].right;
+
+                        println!("LL not empty:");
+                        println!("\th_l {}: {}", h_min_left, self.elements[h_min_left].to_string());
+                        println!("\ta_i {}: {}", a_i, self.elements[a_i].to_string());
+                        //println!("\th_r {}: {}", h_min_right, self.elements[h_min_right].to_string());
+
+                        self.elements[a_i].left = h_min_left;
+                        self.elements[h_min_left].right = a_i;
+
+                        self.elements[a_i].right = h_min;
+                        self.elements[h_min].left = a_i;
+
+                        println!("\th_l {}: {}", h_min_left, self.elements[h_min_left].to_string());
+                        println!("\ta_i {}: {}", a_i, self.elements[a_i].to_string());
+                        //println!("\th_r {}: {}", h_min_right, self.elements[h_min_right].to_string());
+
+                        if self.elements[a_i].value < self.elements[h_min].value {
+                            self.h_min = Some(a_i);
+                        }
+                    } else {
+                        // root ll is empty
+                        println!("LL empty:");
+                        println!("\ta_i {}: {}", a_i, self.elements[a_i].to_string());
+                        self.elements[a_i].right = a_i;
+                        self.elements[a_i].left = a_i;
+                        self.elements[a_i].parent = None;
+                        println!("\ta_i {}: {}", a_i, self.elements[a_i].to_string());
+                        self.h_min = Some(a_i);
+                    }
+                }
+            }
+        }
+    }
+
+    fn link(&mut self, y: usize, x: usize) {
+        //println!("\t\t\tlinking {y}({}) to {x}({})", self.elements[y].value, self.elements[x].value);
+
+        // remove y from root list
+        let y_right = self.elements[y].right;
+        let y_left = self.elements[y].left;
+        self.elements[y_left].right = y_right;
+        self.elements[y_right].left = y_left;
+
+        // make y a child of x
+        if let Some(x_child) = self.elements[x].child {
+            let x_child_left = self.elements[x_child].left;
+
+            self.elements[y].left = x_child_left;
+            self.elements[x_child_left].right = y;
+
+            self.elements[y].right = x_child;
+            self.elements[x_child].left = y;
+        } else {
+            // create new ll with only y in it
+            self.elements[y].right = y;
+            self.elements[y].left = y;
+
+            // y becomes child list reference of x
+            self.elements[x].child = Some(y);
+        }
+        self.elements[y].parent = Some(x);            
+
+        // increase x.degree
+        self.elements[x].degree += 1;
+        // remove y.mark
+        self.elements[y].marked = false;
     }
 
     fn update_references(&mut self, z: usize, z_old: usize) {
@@ -164,99 +291,8 @@ impl FibonacciHeap {
             }
         }
     }
-
-    fn consolidate(&mut self) {
-        let mut a: Vec<Option<usize>> = vec![None; self.size()];
-
-        if let Some(h_min) = self.h_min {
-            let w_end = self.elements[h_min].left;
-            let mut w_cur = h_min;
-
-            loop {
-                let mut x = w_cur;
-                let mut d = self.elements[w_cur].degree;
-
-                while let Some(mut y) = a[d] {
-                    if self.elements[x].value > self.elements[y].value {
-                        // exchange x and y
-                        let x_tmp = x;
-                        x = y;
-                        y = x_tmp;
-                    }
-                    self.link(y,x);
-                    a[d] = None;
-                    d = d + 1;
-                }
-
-                a[d] = Some(x);
-                
-                if w_cur == w_end { break; }
-                w_cur = self.elements[w_cur].right;
-            }
-        
-            self.h_min = None;
-
-            for a_i in a {
-                if let Some(a_i) = a_i {
-                    if let Some(h_min) = self.h_min {
-                        // root ll already exists
-                        let h_min_left = self.elements[h_min].left;
-                        let h_min_right = self.elements[h_min].right;
-
-                        self.elements[a_i].left = h_min_left;
-                        self.elements[h_min_left].right = a_i;
-
-                        self.elements[a_i].right = h_min_right;
-                        self.elements[h_min_right].left = a_i;
-
-                        if self.elements[a_i].value < self.elements[h_min].value {
-                            self.h_min = Some(a_i);
-                        }
-                    } else {
-                        // root ll is empty
-                        self.elements[a_i].right = a_i;
-                        self.elements[a_i].left = a_i;
-                        self.elements[a_i].parent = None;
-                        self.h_min = Some(a_i);
-                    }
-                }
-            }
-        }
-    }
-
-    fn link(&mut self, y: usize, x: usize) {
-        // remove y from root list
-        let y_right = self.elements[y].right;
-        let y_left = self.elements[y].left;
-        self.elements[y_left].right = y_right;
-        self.elements[y_right].left = y_left;
-
-        // make y a child of x
-        if let Some(x_child) = self.elements[x].child {
-            let x_child_left = self.elements[x_child].left;
-
-            self.elements[y].left = x_child_left;
-            self.elements[x_child_left].right = y;
-
-            self.elements[y].right = x_child;
-            self.elements[x_child].left = y;
-        } else {
-            // create new ll with only y in it
-            self.elements[y].right = y;
-            self.elements[y].left = y;
-
-            // y becomes child list reference of x
-            self.elements[x].child = Some(y);
-        }
-        self.elements[y].parent = Some(x);            
-
-        // increase x.degree
-        self.elements[x].degree += 1;
-        // remove y.mark
-        self.elements[y].marked = false;
-    }
-
-    pub fn to_graphviz_graph(&self) -> Graph {
+    
+    pub fn to_graphviz_graph(&mut self) -> Graph {
         // TODO: graphviz stuff
         let mut graph = Graph::DiGraph {
             id: id!("fibheap"),
@@ -264,45 +300,123 @@ impl FibonacciHeap {
             stmts: vec![]
         };
 
-        let mut nodes: Vec<Node> = vec![];
+        graph.add_stmt(stmt!(attr!("rankdir", "BT")));
+
+        let mut subgraph = Subgraph {
+            id: id!("fibheap_sg"),
+            stmts: vec![],
+        };
+
         let mut edges: Vec<Edge> = vec![];
+        // add dummy root node
+        graph.add_stmt(stmt!(
+            Subgraph {
+                id: id!("sg_root"),
+                stmts: vec![stmt!(
+                Node {
+                    id: node_id!("root"),
+                    attributes: vec![]
+                })]
+            }
+        ));
 
-        for elem in &self.elements {
-            nodes.push(node!(
-                elem.value;
-                attr!("deg", elem.degree)
-            ));
-
-            edges.push(edge!(
-                node_id!(elem.value) => node_id!(self.elements[elem.right].value)
-            ));
-            edges.push(edge!(
-                node_id!(elem.value) => node_id!(self.elements[elem.left].value)
-            ));
-
-            if let Some(parent) = elem.parent {
+        if let Some(h_min) = self.h_min {
+            for elem in &self.elements {
                 edges.push(edge!(
-                    node_id!(elem.value) => node_id!(self.elements[parent].value)
+                    node_id!(elem.value) => node_id!(self.elements[elem.right].value);
+                    attr!("constraint", false)//,attr!("style", "invis")
                 ));
+                edges.push(edge!(
+                    node_id!(elem.value) => node_id!(self.elements[elem.left].value);
+                    attr!("constraint", false)//,attr!("style", "invis")
+                ));
+                if let Some(parent) = elem.parent {
+                    edges.push(edge!(
+                        node_id!(elem.value) => node_id!(self.elements[parent].value)//;attr!("style", "invis")
+                    ));
+                }
+
+                if let Some(child) = elem.child {
+                    edges.push(edge!(
+                        node_id!(elem.value) => node_id!(self.elements[child].value);
+                        attr!("constraint", false)
+                    ));
+                }
+            }
+           
+            // update depths
+            let mut lls: Vec<(usize, usize)> = vec![(h_min, 0)];
+            let mut max_depth = 0;
+
+            while let Some((ll_start, cur_depth)) = lls.pop() {
+                println!("Setting depth for ll with start = {} [{}] to {}", self.elements[ll_start].value, ll_start, cur_depth);
+                let mut ll_cur = ll_start;
+
+                if cur_depth > max_depth { max_depth = cur_depth; }
+
+                loop {
+                    println!("{} child: {:?}", ll_cur, self.elements[ll_cur].child);
+                    if let Some(child) = self.elements[ll_cur].child {
+                        lls.push((child, cur_depth + 1));
+                    } 
+
+                    self.elements[ll_cur].depth = cur_depth;
+                    self.elements[ll_cur].marked = true;
+
+                    ll_cur = self.elements[ll_cur].right;
+                    if ll_cur == ll_start { break; }
+                }
             }
 
-            if let Some(child) = elem.child {
-                edges.push(edge!(
-                    node_id!(elem.value) => node_id!(self.elements[child].value)
-                ));
+            for cur_depth in 0..(max_depth + 1) {
+                let mut depth_subgraph = Subgraph{
+                    id: id!(format!("sg_ll_{cur_depth}")),
+                    stmts: vec![]
+                };
+                depth_subgraph.stmts.push(stmt!(attr!("rank", "same")));
+
+                for (i, elem) in self.elements.iter().enumerate().filter(|(_,elem)| elem.depth == cur_depth) {
+                    let label = format!("\"{} [{}]\ndeg: {}\ndepth: {}\nl: {}, r: {}\np: {:?}, c: {:?}\"",
+                                                elem.value, i, elem.degree, elem.depth, elem.left, elem.right, elem.parent, elem.child);
+                    if h_min == i {
+                        depth_subgraph.stmts.push(stmt!(
+                            Node { 
+                                id: node_id!(elem.value),
+                                attributes: vec![
+                                    Attribute(id!("label"), id!(label)),
+                                    Attribute(id!("style"), id!("filled")),
+                                    Attribute(id!("fillcolor"), id!("red")),
+                                ]
+                            }
+                        ));
+                        edges.push(edge!(node_id!(elem.value) => node_id!("root")));
+                    } else {
+                        depth_subgraph.stmts.push(stmt!(
+                            Node { 
+                                id: node_id!(elem.value),
+                                attributes: vec![
+                                    Attribute(id!("label"), id!(label)),
+                                    Attribute(id!("style"), id!("filled")),
+                                    Attribute(id!("fillcolor"), if elem.marked {id!("lightgrey")} else {id!("white")}),
+                                ]
+                            }
+                        ));
+                        if cur_depth == 0 {edges.push(edge!(node_id!(elem.value) => node_id!("root"); attr!("style", "invis")));}
+                    }
+                }
+
+                subgraph.stmts.push(stmt!(depth_subgraph));
+
             }
 
-        }
-   
-        for node in nodes {
-            graph.add_stmt(Stmt::Node(node));
-        }
-
-        for edge in edges {
-            graph.add_stmt(Stmt::Edge(edge));
+            for edge in edges {
+                subgraph.stmts.push(stmt!(edge));
+            }
         }
 
-        return graph;
+        graph.add_stmt(stmt!(subgraph));
+
+        graph
     }
 
     pub fn size(&self) -> usize { self.elements.len() }
