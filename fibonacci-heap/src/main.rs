@@ -1,91 +1,103 @@
 pub mod fibonacci_heap;
 use crate::fibonacci_heap::FibonacciHeap;
 
-use std::{fs::{self, File}, io::{Error, Write}};
-use graphviz_rust::{cmd::Format, exec, printer::PrinterContext};
-
 
 fn main() {
-    let mut fheap = FibonacciHeap::new();
-    let mut fheap_printer = FibHeapPrinter::new();
+    println!("Fibonacci Heap main");
+    fheap_test_union();
+}
 
-    //let data = [23, 7, 3, 17, 24, 18, 52, 38, 30, 26, 46, 39, 41, 35].into_iter().collect::<Vec<usize>>();
-    let mut data_vec = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30].into_iter().map(|x| (x,0)).collect::<Vec<(usize,usize)>>();
+#[test]
+fn union_test() {
+    fheap_test_union();
+}
+
+fn fheap_test_union() {
+    let mut fheap1 = FibonacciHeap::new( 
+        "./output/test/union".to_string(),
+        "a".to_string());
+
+    fheap1.insert(1);
+    fheap1.insert(2);
+    fheap1.insert(3);
+    fheap1.insert(4);
+    fheap1.insert(5);
+    fheap1.insert(6);
+    fheap1.print();
+    _ = fheap1.extract_min();
+    fheap1.print();
+
+    let mut fheap2 = FibonacciHeap::new( 
+        "./output/test/union".to_string(),
+        "b".to_string());
+
+    fheap2.insert(11);
+    fheap2.insert(12);
+    fheap2.insert(13);
+    fheap2.insert(14);
+    fheap2.insert(15);
+    fheap2.insert(16);
+    fheap2.print();
+    _ = fheap2.extract_min();
+    fheap2.print();
+
+    let (mut fheap3,_) = FibonacciHeap::union(
+        fheap1, 
+        fheap2, 
+        "./output/test/union".to_string()
+    );
+
+    fheap3.print();
+    _ = fheap3.extract_min();
+    fheap3.print();
+    fheap3.decrease_key(9, 9);
+    fheap3.print();
+}
+
+#[test]
+fn fheap_test_extractmin() {
+    let mut fheap = FibonacciHeap::new(
+        "./output/test/extract_min".to_string(),
+        "test_extractmin".to_string());
+
+    let data_vec = [23, 7, 3, 17, 24, 18, 52, 38, 30, 26, 46, 39, 41, 35].into_iter().collect::<Vec<usize>>();
+
+    for i in 0..data_vec.len() {
+        fheap.insert(data_vec[i]);
+    }
+
+    fheap.print();
+    
+    let heap_size = fheap.size();
+    for _i in 0..heap_size {
+        println!("ExtractMin: {:?}", fheap.extract_min());
+        fheap.print();
+    }
+}
+
+#[test]
+fn fheap_test_decreasekey() {
+    let mut fheap = FibonacciHeap::new(
+        "./output/test/decrease_key".to_string(),
+        "test_decreasekey".to_string());
+
+   let mut data_vec = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30].into_iter().map(|x| (x,0)).collect::<Vec<(usize,usize)>>();
 
     for i in 0..data_vec.len() {
         data_vec[i].1 = fheap.insert(data_vec[i].0);
     }
 
-    fheap_printer.print(&mut fheap).unwrap();
+    fheap.print();
     
     // 1x ExtractMin to 'heapify' to heap
     println!("ExtractMin: {:?}", fheap.extract_min());
-    fheap_printer.print(&mut fheap).unwrap();
+    fheap.print();
 
     println!("DecreaseKey 24 -> 8");
     fheap.decrease_key(7, 8);
-    fheap_printer.print(&mut fheap).unwrap();
+    fheap.print();
     
     println!("DecreaseKey 21 -> 7");
     fheap.decrease_key(6, 7);
-    fheap_printer.print(&mut fheap).unwrap();
-
-
-    /*let heap_size = fheap.size();
-    for _i in 0..heap_size {
-        println!("ExtractMin: {:?}", fheap.extract_min());
-        fheap_printer.print(&mut fheap).unwrap();
-    }*/
-}
-
-
-struct FibHeapPrinter {
-    timestamp: String,
-    counter: usize,
-    output_folder: String,
-}
-
-impl FibHeapPrinter {
-    fn new() -> Self { 
-        //let output_folder_path = format!("./output/{}", timestamp);
-        let printer = FibHeapPrinter {
-            timestamp: format!("{}", chrono::prelude::Utc::now().format("%Y%m%d-%H%M")),
-            counter: 0,
-            output_folder: format!("./output"),
-        };
-
-        println!("Created FibHeap Printer with timestamp: {}", printer.timestamp);
-        match fs::remove_dir_all(&printer.output_folder) {
-            Ok(()) => (),
-            Err(_) => ()
-        };
-
-        printer
-    }
-
-    fn print(&mut self, fheap: &mut FibonacciHeap) -> Result<(), Error> {
-        fheap.update_depths();
-        let graph = fheap.to_graphviz_graph();
-        //println!("Graph: {}", graph.print(&mut PrinterContext::default()));
-        let format = Format::Svg;
-        let graph_svg = exec(graph, &mut PrinterContext::default(), vec![format.into()])?;
-
-        let filename = format!("{}/output-{}.svg", self.output_folder, self.counter);
-
-        match fs::create_dir_all(&self.output_folder) {
-            Ok(_) => (),
-            Err(err) => {
-                println!("Error creating output folder: {err:?}");
-            }
-        }
-
-        self.counter += 1;
-        
-        println!("Writing svg to file {filename}");
-
-        let mut file = File::create(filename)?;
-        file.write_all(graph_svg.as_slice())?;
-
-        Ok(())
-    }
+    fheap.print();
 }
