@@ -11,20 +11,48 @@ struct FibonacciHeapElement {
     left: usize,
     right: usize,
     depth: usize,
+    lookup_pos: usize,
 }
 
 pub struct FibonacciHeap {
     elements: Vec<FibonacciHeapElement>,
+    lookup_table: Vec<(usize,bool)>,
+    lookup_table_spaces: Vec<usize>,
     h_min: Option<usize>,
+
     max_depth: usize,
+    operations: Vec<String>,
 }
 
 impl FibonacciHeap {
     pub fn new() -> Self {
-        FibonacciHeap { elements: vec![], h_min: None, max_depth: 0, }
+        FibonacciHeap {
+            elements: vec![],
+            lookup_table: vec![],
+            lookup_table_spaces: vec![],
+            h_min: None,
+
+            max_depth: 0,
+            operations: vec![format!("Heap Creation")],
+        }
     }
 
-    pub fn insert(&mut self, data: usize) {
+    pub fn insert(&mut self, data: usize) -> usize {
+        self.operations.push(format!("Insert: {}", data));
+
+        let new_i = self.elements.len();
+
+        let lookup_pos = if let Some(pos) = self.lookup_table_spaces.pop() {
+            if self.lookup_table[pos].1 {
+                panic!("Insert Error: lookup table pos {} is already in use!", pos);
+            }
+            self.lookup_table[pos].1 = true;
+            pos
+        } else {
+            self.lookup_table.push((new_i,true));
+            self.lookup_table.len() - 1
+        };
+
         let mut new_elem = FibonacciHeapElement {
             value: data,
             degree: 0,
@@ -34,9 +62,8 @@ impl FibonacciHeap {
             left: 0,
             right: 0,
             depth: 0,
+            lookup_pos: lookup_pos,
         };
-
-        let new_i = self.elements.len();
 
         match self.h_min {
             None => {
@@ -65,6 +92,7 @@ impl FibonacciHeap {
         
         self.elements.push(new_elem);
 
+        return lookup_pos;
     }
 
     pub fn extract_min(&mut self) -> Option<usize> {
@@ -110,7 +138,11 @@ impl FibonacciHeap {
             self.elements.swap(z, z_new);
             self.update_references(z, z_new);
 
+            // remove element z from elements
             self.elements.truncate(self.elements.len() - 1);
+            // free up space in lookup table
+            self.lookup_table[z_elem.lookup_pos].1 = false;
+            self.lookup_table_spaces.push(z_elem.lookup_pos);
 
             if z_elem.right == z {
                 // heap is empty after removal
@@ -127,9 +159,10 @@ impl FibonacciHeap {
                 self.consolidate();
             }
 
-
+            self.operations.push(format!("ExtractMin: {}", ret_val));
             return Some(ret_val);
         } else {
+            self.operations.push(format!("ExtractMin: None"));
             return None;
         }
     } 
@@ -242,6 +275,86 @@ impl FibonacciHeap {
         self.elements[y].marked = false;
     }
 
+    pub fn decrease_key(&mut self, lookup_index: usize, new_key: usize) {
+        if self.elements.len() == 0 {
+            panic!("DecreaseKey Error: heap empty!");
+        }
+
+        let (x, x_valid) = self.lookup_table[lookup_index];
+        if !x_valid {
+            panic!("DecreaseKey Error: lookup entry {} is invalid!", lookup_index);
+        }
+        if self.elements[x].value <= new_key {
+            panic!("DecreaseKey Error: new key {} for {} is bigger than current key {}!",
+                new_key, x, self.elements[x].value);
+        }
+
+        // all good, can decrease key and update heap
+        self.operations.push(format!("DecreaseKey: {} {}->{}", x, self.elements[x].value, new_key));
+
+        self.elements[x].value = new_key;
+        if let Some(y) = self.elements[x].parent {
+            if self.elements[x].value < self.elements[y].value {
+                self.cut(x, y);
+                self.cascading_cut(y);
+            }
+        }
+
+        if let Some(h_min) = self.h_min {
+            if self.elements[x].value < self.elements[h_min].value {
+                self.h_min = Some(x);
+            }
+        }
+    }
+
+    fn cut(&mut self, x: usize, y: usize) {
+        // remove x from child list of y
+        let x_left = self.elements[x].left;
+        let x_right = self.elements[x].right;
+
+        self.elements[x_left].right = x_right;
+        self.elements[x_right].left = x_left;
+
+        if let Some(y_child) = self.elements[y].child {
+            if y_child == x {
+                if x_right == x {
+                    self.elements[y].child = None;
+                } else {
+                    self.elements[y].child = Some(x_right);
+                }
+            }
+        }
+
+        // decrease degree of y
+        self.elements[y].degree -= 1;
+
+        // add x to root list
+        if let Some(h_min) = self.h_min {
+            let h_min_left = self.elements[h_min].left;
+
+            self.elements[x].left = h_min_left;
+            self.elements[h_min_left].right = x;
+
+            self.elements[x].right = h_min;
+            self.elements[h_min].left = x;
+        }
+
+        // set x.parent = None, x.marked = false
+        self.elements[x].parent = None;
+        self.elements[x].marked = false;
+    }
+
+    fn cascading_cut(&mut self, y: usize) {
+        if let Some(z) = self.elements[y].parent {
+            if self.elements[y].marked {
+                self.cut(y, z);
+                self.cascading_cut(z);
+            } else {
+                self.elements[y].marked = true;
+            }
+        }
+    }
+
     fn update_references(&mut self, z: usize, z_old: usize) {
         // update all references to u
         /*println!("\tUpdating references of {} from {} to {}: l: {}, r: {}, c: {:?}, p: {:?}",
@@ -287,6 +400,10 @@ impl FibonacciHeap {
                 }
             }
         }
+
+        // update lookup table entry
+        self.lookup_table[self.elements[z].lookup_pos].0 = z;
+
         /*println!("\tAfter update of {} from {} to {}: l: {}, r: {}, c: {:?}, p: {:?}",
             self.elements[z].value, z_old, z,
             self.elements[z].left,
@@ -338,13 +455,21 @@ impl FibonacciHeap {
 
         let mut edges: Vec<Edge> = vec![];
         // add dummy root node
+        let root_label = if let Some(last_op) = self.operations.last() {
+            format!("\"root\nlast op:\n{}\"",last_op)
+        } else {
+            format!("\"root\nlast op:\n-\"",)
+        };
+
         graph.add_stmt(stmt!(
             Subgraph {
                 id: id!("sg_root"),
                 stmts: vec![stmt!(
                 Node {
                     id: node_id!("root"),
-                    attributes: vec![]
+                    attributes: vec![
+                        Attribute(id!("label"), id!(root_label))
+                    ]
                 })]
             }
         ));
@@ -381,8 +506,8 @@ impl FibonacciHeap {
                 depth_subgraph.stmts.push(stmt!(attr!("rank", "same"))); 
 
                 for (i, elem) in self.elements.iter().enumerate().filter(|(_,elem)| elem.depth == cur_depth) {
-                    let label = format!("\"{} [{}]\ndeg: {}\n\"",
-                                                elem.value, i, elem.degree);
+                    let label = format!("\"{} [{}]\ndeg: {}\nlookup: {}\"",
+                                                elem.value, i, elem.degree, elem.lookup_pos);
                     if h_min == i {
                         depth_subgraph.stmts.push(stmt!(
                             Node { 

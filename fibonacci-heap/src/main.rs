@@ -9,20 +9,35 @@ fn main() {
     let mut fheap = FibonacciHeap::new();
     let mut fheap_printer = FibHeapPrinter::new();
 
-    let data = [23, 7, 3, 17, 24, 18, 52, 38, 30, 26, 46, 39, 41, 35].into_iter().collect::<Vec<usize>>();
+    //let data = [23, 7, 3, 17, 24, 18, 52, 38, 30, 26, 46, 39, 41, 35].into_iter().collect::<Vec<usize>>();
+    let mut data_vec = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30].into_iter().map(|x| (x,0)).collect::<Vec<(usize,usize)>>();
 
-    for data in &data {
-        fheap.insert(*data);
+    for i in 0..data_vec.len() {
+        data_vec[i].1 = fheap.insert(data_vec[i].0);
     }
 
     fheap_printer.print(&mut fheap).unwrap();
+    
+    // 1x ExtractMin to 'heapify' to heap
+    println!("ExtractMin: {:?}", fheap.extract_min());
+    fheap_printer.print(&mut fheap).unwrap();
 
-    let heap_size = fheap.size();
+    println!("DecreaseKey 24 -> 8");
+    fheap.decrease_key(7, 8);
+    fheap_printer.print(&mut fheap).unwrap();
+    
+    println!("DecreaseKey 21 -> 7");
+    fheap.decrease_key(6, 7);
+    fheap_printer.print(&mut fheap).unwrap();
+
+
+    /*let heap_size = fheap.size();
     for _i in 0..heap_size {
         println!("ExtractMin: {:?}", fheap.extract_min());
         fheap_printer.print(&mut fheap).unwrap();
-    }
+    }*/
 }
+
 
 struct FibHeapPrinter {
     timestamp: String,
