@@ -104,6 +104,9 @@ impl FibonacciHeap {
 
             let z_elem = self.elements[z];
             let z_new = self.elements.len() - 1;
+            /*println!("Extracting {} [{}]: Swapping to back with {} [{}]",
+                z_elem.value, z,
+                self.elements[z_new].value, z_new);*/
             self.elements.swap(z, z_new);
             self.update_references(z, z_new);
 
@@ -241,21 +244,38 @@ impl FibonacciHeap {
 
     fn update_references(&mut self, z: usize, z_old: usize) {
         // update all references to u
+        /*println!("\tUpdating references of {} from {} to {}: l: {}, r: {}, c: {:?}, p: {:?}",
+            self.elements[z].value, z_old, z,
+            self.elements[z].left,
+            self.elements[z].right,
+            self.elements[z].child,
+            self.elements[z].parent);*/
 
-        let z_right = self.elements[z].right;
-        let z_left = self.elements[z].left;
+        if z == z_old {
+            //println!("\t\tNo position change -> do nothing!");
+            return;
+        }
+
+        let mut z_right = self.elements[z].right;
+        if z_right == z_old { z_right = z; }
+        let mut z_left = self.elements[z].left;
+        if z_left == z_old { z_left = z; }
         self.elements[z_right].left = z;
         self.elements[z_left].right = z;
 
         if let Some(child) = self.elements[z].child {
             // update all parent references in the list of the child
+            //println!("\t\tUpdating references for children in ll, starting at {}", child);
             let child_start = child;
             let mut child_cur = child_start;
 
             loop {
+                //println!("\t\t\tChild {}: prev p: {:?}", child_cur, self.elements[child_cur].parent);
                 self.elements[child_cur].parent = Some(z);
+                //println!("\t\t\tChild {}: new p: {:?}", child_cur, self.elements[child_cur].parent);
 
                 child_cur = self.elements[child_cur].right;
+                //println!("\t\t\tNext child: {}", child_cur);
                 if child_cur == child_start { break; }
             }
         }
@@ -267,6 +287,12 @@ impl FibonacciHeap {
                 }
             }
         }
+        /*println!("\tAfter update of {} from {} to {}: l: {}, r: {}, c: {:?}, p: {:?}",
+            self.elements[z].value, z_old, z,
+            self.elements[z].left,
+            self.elements[z].right,
+            self.elements[z].child,
+            self.elements[z].parent);*/
     }
 
     pub fn update_depths(&mut self) {

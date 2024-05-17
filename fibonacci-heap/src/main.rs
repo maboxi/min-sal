@@ -15,10 +15,12 @@ fn main() {
         fheap.insert(*data);
     }
 
+    fheap_printer.print(&mut fheap).unwrap();
+
     let heap_size = fheap.size();
     for _i in 0..heap_size {
         println!("ExtractMin: {:?}", fheap.extract_min());
-        //fheap_printer.print(&mut fheap).unwrap();
+        fheap_printer.print(&mut fheap).unwrap();
     }
 }
 
@@ -38,7 +40,10 @@ impl FibHeapPrinter {
         };
 
         println!("Created FibHeap Printer with timestamp: {}", printer.timestamp);
-        fs::remove_dir_all(&printer.output_folder).unwrap();
+        match fs::remove_dir_all(&printer.output_folder) {
+            Ok(()) => (),
+            Err(_) => ()
+        };
 
         printer
     }
