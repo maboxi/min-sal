@@ -631,17 +631,30 @@ impl FibonacciHeap {
         graph
     }
 
-    pub fn print(&mut self) {
+    pub fn print(&mut self) -> Result<(), Error> {
         self.update_depths();
-        self.printer.print(self).unwrap();
+        self.printer.print(self)?;
         self.printer.increase_counter();
+        Ok(())
     }
 
     pub fn size(&self) -> usize { self.elements.len() }
+    
+    pub fn get_name(&self) -> &String { &self.name }
+
+    // only use if really needed
+    pub fn get_lookup_index(&self, key: usize) -> usize {
+        for elem in &self.elements {
+            if elem.value == key {
+                return elem.lookup_pos;
+            }
+        }
+        panic!("Lookup Index Search Error: no element with value {key} in the heap!");
+    }
 }
 
 struct FibHeapPrinter {
-    timestamp: String,
+    _timestamp: String,
     counter: usize,
     output_folder: String,
 }
@@ -650,7 +663,7 @@ impl FibHeapPrinter {
     fn new(output: &String, subfolder: &String) -> Self { 
         //let output_folder_path = format!("./output/{}", timestamp);
         let printer = FibHeapPrinter {
-            timestamp: format!("{}", chrono::prelude::Utc::now().format("%Y%m%d-%H%M")),
+            _timestamp: format!("{}", chrono::prelude::Utc::now().format("%Y%m%d-%H%M")),
             counter: 0,
             output_folder: format!("./{output}/{subfolder}"),
         };
