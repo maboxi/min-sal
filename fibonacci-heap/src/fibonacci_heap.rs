@@ -1,3 +1,6 @@
+use std::{fs::{self, File}, io::{Error, Write}};
+use graphviz_rust::{cmd::Format, exec, printer::PrinterContext};
+
 use graphviz_rust::dot_generator::*;
 use graphviz_rust::dot_structures::*;
 
@@ -22,10 +25,13 @@ pub struct FibonacciHeap {
 
     max_depth: usize,
     operations: Vec<String>,
+    name: String,
+    printer: FibHeapPrinter,
 }
 
 impl FibonacciHeap {
-    pub fn new() -> Self {
+    pub fn new(folder: String, name: String) -> Self {
+        let printer = FibHeapPrinter::new(&folder, &name);
         FibonacciHeap {
             elements: vec![],
             lookup_table: vec![],
@@ -34,7 +40,83 @@ impl FibonacciHeap {
 
             max_depth: 0,
             operations: vec![format!("Heap Creation")],
+            name: name,
+            printer: printer,
         }
+    }
+
+    pub fn union(mut fheap1: FibonacciHeap, fheap2: FibonacciHeap, folder: String) -> (Self, usize) {
+        let name = format!("{}_{}", fheap1.name, fheap2.name);
+        let printer = FibHeapPrinter::new(&folder,&name);
+
+        let elem_offset = fheap1.elements.len();
+        let elem_length = fheap1.elements.len() + fheap2.elements.len();
+        let lut_offset = fheap1.lookup_table.len();
+        let lut_length = fheap1.lookup_table.len() + fheap2.lookup_table.len();
+
+        let mut union_heap = FibonacciHeap {
+            elements: Vec::with_capacity(elem_length),
+            lookup_table: Vec::with_capacity(lut_length),
+            lookup_table_spaces: vec![],
+            h_min: None,
+
+            max_depth: 0,
+            operations: vec![format!("Heap Creation")],
+            name: name,
+            printer: printer,
+        };
+
+        union_heap.elements.append(&mut fheap1.elements);
+        union_heap.elements.append(
+            &mut fheap2.elements.into_iter().map(|mut elem| {
+                elem.parent = elem.parent.map(|p| p + elem_offset);
+                elem.child = elem.child.map(|c| c + elem_offset);
+                elem.left += elem_offset;
+                elem.right += elem_offset;
+                elem.lookup_pos += lut_offset;
+                elem
+            }).collect()
+        );
+
+        // connect H2.h_min to H1.h_min and update h_min to new min
+        if let Some(h1_min) = fheap1.h_min {
+            if let Some(h2_min) = fheap2.h_min {
+                let h2_min = h2_min + elem_offset;
+
+                let h1_min_left = union_heap.elements[h1_min].left;
+                let h2_min_left = union_heap.elements[h2_min].left;
+                
+                union_heap.elements[h1_min_left].right = h2_min;
+                union_heap.elements[h2_min].left = h1_min_left;
+
+                union_heap.elements[h2_min_left].right = h1_min;
+                union_heap.elements[h1_min].left = h2_min_left;
+
+                if union_heap.elements[h2_min].value < union_heap.elements[h1_min].value {
+                    union_heap.h_min = Some(h2_min);
+                } else {
+                    union_heap.h_min = Some(h1_min);
+                }
+            } else {
+                union_heap.h_min = Some(h1_min);
+            }
+        } else {
+            union_heap.h_min = fheap2.h_min;
+        }
+
+        union_heap.lookup_table.append(&mut fheap1.lookup_table);
+        union_heap.lookup_table.append(
+            &mut fheap2.lookup_table.into_iter().map(|(index, valid)| (index + elem_offset, valid)).collect()
+        );
+
+        union_heap.lookup_table_spaces.append(&mut fheap1.lookup_table_spaces);
+        union_heap.lookup_table_spaces.append(
+            &mut fheap2.lookup_table_spaces.into_iter().map(|index| index + lut_offset).collect()
+        );
+
+        union_heap.operations.push(format!("Union: {} u {} -> {}", fheap1.name, fheap2.name, union_heap.name));
+
+        return (union_heap, lut_offset);
     }
 
     pub fn insert(&mut self, data: usize) -> usize {
@@ -435,7 +517,7 @@ impl FibonacciHeap {
                 }
             }
         }
-   }
+    }
     
     pub fn to_graphviz_graph(&self) -> Graph {
         let mut graph = Graph::DiGraph {
@@ -549,5 +631,66 @@ impl FibonacciHeap {
         graph
     }
 
+    pub fn print(&mut self) {
+        self.update_depths();
+        self.printer.print(self).unwrap();
+        self.printer.increase_counter();
+    }
+
     pub fn size(&self) -> usize { self.elements.len() }
+}
+
+struct FibHeapPrinter {
+    timestamp: String,
+    counter: usize,
+    output_folder: String,
+}
+
+impl FibHeapPrinter {
+    fn new(output: &String, subfolder: &String) -> Self { 
+        //let output_folder_path = format!("./output/{}", timestamp);
+        let printer = FibHeapPrinter {
+            timestamp: format!("{}", chrono::prelude::Utc::now().format("%Y%m%d-%H%M")),
+            counter: 0,
+            output_folder: format!("./{output}/{subfolder}"),
+        };
+
+        //println!("Created FibHeap Printer with timestamp: {}", printer.timestamp);
+        println!("Created FibHeap Printer with output folder '{}' and subfolder '{}'",
+            output,
+            subfolder);
+        match fs::remove_dir_all(&printer.output_folder) {
+            Ok(()) => (),
+            Err(_) => ()
+        };
+
+        printer
+    }
+
+    fn print(&self, fheap: &FibonacciHeap) -> Result<(), Error> {
+        let graph = fheap.to_graphviz_graph();
+        //println!("Graph: {}", graph.print(&mut PrinterContext::default()));
+        let format = Format::Svg;
+        let graph_svg = exec(graph, &mut PrinterContext::default(), vec![format.into()])?;
+
+        let filename = format!("{}/output-{}.svg", self.output_folder, self.counter);
+
+        match fs::create_dir_all(&self.output_folder) {
+            Ok(_) => (),
+            Err(err) => {
+                println!("Error creating output folder: {err:?}");
+            }
+        } 
+        
+        println!("Writing svg to file {filename}");
+
+        let mut file = File::create(filename)?;
+        file.write_all(graph_svg.as_slice())?;
+
+        Ok(())
+    }
+
+    fn increase_counter(&mut self) {
+        self.counter += 1;
+    }
 }
