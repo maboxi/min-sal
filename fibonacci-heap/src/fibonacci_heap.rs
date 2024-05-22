@@ -538,9 +538,9 @@ impl FibonacciHeap {
         let mut edges: Vec<Edge> = vec![];
         // add dummy root node
         let root_label = if let Some(last_op) = self.operations.last() {
-            format!("\"root\nlast op:\n{}\"",last_op)
+            format!("\"Heap {}\nlast op:\n{}\"", self.name, last_op)
         } else {
-            format!("\"root\nlast op:\n-\"",)
+            format!("\"Heap {}\nlast op:\n-\"", self.name)
         };
 
         graph.add_stmt(stmt!(
