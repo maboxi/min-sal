@@ -3,11 +3,52 @@ use std::io::Error;
 
 use crate::fibonacci_heap::FibonacciHeap;
 
+macro_rules! name {
+    ( $x:literal) => {
+        String::from($x)
+    };
+}
 
 fn main() {
     println!("Fibonacci Heap main");
-    fheap_test_helper();
+    sal_sheet4_ex4();
 }
+
+fn sal_sheet4_ex4() {
+    use HeapOperation::*;
+    println!("{:?}", HeapHelper::new_and_execute("./output/s4e4".to_string(), 
+        vec![
+            Create(name!("A")),
+            Insert(name!("A"), 23),
+
+            Create(name!("B")),
+            Insert(name!("B"), 7),
+
+            Create(name!("C")),
+
+            Create(name!("D")),
+            Insert(name!("D"), 16),
+            Insert(name!("D"), 17),
+            Insert(name!("D"), 30),
+            ExtractMin(name!("D")),
+
+            Create(name!("E")),
+            Insert(name!("E"), 24),
+            Insert(name!("E"), 26),
+            Insert(name!("E"), 35),
+            Insert(name!("E"), 46),
+            Insert(name!("E"), 23),
+            ExtractMin(name!("E")),
+
+            Union(name!("A"), name!("B")),
+            Union(name!("A_B"), name!("C")),
+            Union(name!("A_B_C"), name!("D")),
+            Union(name!("A_B_C_D"), name!("E")),
+        ]
+    ));
+}
+
+
 
 #[derive(Debug, Clone)]
 enum HeapOperation {
@@ -15,6 +56,7 @@ enum HeapOperation {
     Insert(String, usize),
     ExtractMin(String),
     DecreaseKey(String, usize, usize),
+    Union(String, String),
 }
 struct HeapHelper {
     heaps: Vec<FibonacciHeap>,
@@ -29,6 +71,16 @@ impl HeapHelper {
             operations: vec![],
             output_dir: output_dir,
         }
+    }
+
+    pub fn new_and_execute(output_dir: String, ops: Vec<HeapOperation>) -> Vec<Result<Option<usize>, Error>> {
+        let mut helper = Self::new(output_dir);
+        let mut ret = vec![];
+        for op in ops {
+            ret.push(helper.execute(op));
+        }
+        helper.print();
+        return ret;
     }
 
     pub fn execute(&mut self, op: HeapOperation) -> Result<Option<usize>, Error> {
@@ -71,12 +123,38 @@ impl HeapHelper {
                 self.heaps[heap_i].print()?;
 
                 return Ok(ret);
+            },
+            HeapOperation::Union(name1, name2) => {
+                let mut heap1_i: Option<usize> = None;
+                for (i, fh) in self.heaps.iter().enumerate() { if *fh.get_name() == *name1 { heap1_i = Some(i); }}
+                let heap1_i = heap1_i.unwrap_or_else(|| panic!("HeapHelper: Heap {} not found!", name1));
+                let heap1 = self.heaps.drain(heap1_i..heap1_i+1).collect::<Vec<_>>().pop().unwrap_or_else(|| panic!("HeapHelper: Error during removal of heap {} for union with heap {}", name1, name2));
+
+                let mut heap2_i: Option<usize> = None;
+                for (i, fh) in self.heaps.iter().enumerate() { if *fh.get_name() == *name2 { heap2_i = Some(i); }}
+                let heap2_i = heap2_i.unwrap_or_else(|| panic!("HeapHelper: Heap {} not found!", name2));
+                let heap2 = self.heaps.drain(heap2_i..heap2_i+1).collect::<Vec<_>>().pop().unwrap_or_else(|| panic!("HeapHelper: Error during removal of heap {} for union with heap {}", name2, name1));
+
+                let (mut new_heap, _) = FibonacciHeap::union(heap1, heap2, self.output_dir.clone());
+                new_heap.print()?;
+                self.heaps.push(new_heap);
+
+                return Ok(None);
             }
         }
+    }
 
+    pub fn print(&self) {
+        println!("HeapHelper:");
+        println!("\toutput: {}", self.output_dir);
+        println!("\theaps:");
+        for heap in &self.heaps {
+            println!("\t\tHeap {}: {} nodes", heap.get_name(), heap.size());
+        }
     }
 }
 
+#[test]
 fn fheap_test_helper() {
     let mut helper = HeapHelper::new("./output/helper-test".to_string());
 
