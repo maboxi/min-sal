@@ -25,6 +25,20 @@ fn sal_sheet4_ex4() {
             Insert(name!("B"), 7),
 
             Create(name!("C")),
+            Insert(name!("C"), 2),
+            Insert(name!("C"), 38),
+            Insert(name!("C"), 41),
+            Insert(name!("C"), 3),
+            Insert(name!("C"), 52),
+            Insert(name!("C"), 18),
+            Insert(name!("C"), 19),
+            Insert(name!("C"), 39),
+            Insert(name!("C"), 40),
+            ExtractMin(name!("C")),
+            DecreaseKey(name!("C"), 19, 1),
+            ExtractMin(name!("C")),
+            DecreaseKey(name!("C"), 40, 1),
+            ExtractMin(name!("C")),
 
             Create(name!("D")),
             Insert(name!("D"), 16),
@@ -33,17 +47,24 @@ fn sal_sheet4_ex4() {
             ExtractMin(name!("D")),
 
             Create(name!("E")),
-            Insert(name!("E"), 24),
+            Insert(name!("E"), 23),
             Insert(name!("E"), 26),
             Insert(name!("E"), 35),
+            Insert(name!("E"), 27),
+            Insert(name!("E"), 28),
             Insert(name!("E"), 46),
-            Insert(name!("E"), 23),
+            Insert(name!("E"), 24),
+            ExtractMin(name!("E")),
+            DecreaseKey(name!("E"), 27, 22),
+            DecreaseKey(name!("E"), 28, 21),
+            ExtractMin(name!("E")),
             ExtractMin(name!("E")),
 
-            Union(name!("A"), name!("B")),
-            Union(name!("A_B"), name!("C")),
-            Union(name!("A_B_C"), name!("D")),
-            Union(name!("A_B_C_D"), name!("E")),
+            // E -> D -> C -> A -> B
+            Union(name!("E"), name!("D")),
+            Union(name!("E_D"), name!("C")),
+            Union(name!("E_D_C"), name!("A")),
+            Union(name!("E_D_C_A"), name!("B")),
         ]
     ));
 }
