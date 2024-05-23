@@ -153,26 +153,30 @@ impl FibonacciHeap {
                     panic!("H_min cannot be None if there are elements in the heap!");
                 }
                 // neue wurzelliste
-                new_elem.left = new_i;
-                new_elem.right= new_i;
+                self.elements.push(new_elem);
+                self.ll_insert(new_i, new_i, new_i);
+                /*new_elem.left = new_i;
+                new_elem.right= new_i;*/
                 self.h_min = Some(new_i);
             },
-            Some(head) => {
-                let head_left = self.elements[head].left;
+            Some(h_min) => {
+                self.elements.push(new_elem);
+                self.ll_insert(self.elements[h_min].left, new_i, h_min);
 
+                /*
+                let head_left = self.elements[head].left;
                 new_elem.left = head_left;
                 self.elements[head_left].right = new_i;
 
                 new_elem.right = head;
-                self.elements[head].left = new_i;
+                self.elements[head].left = new_i;*/
 
-                if self.elements[head].value > new_elem.value {
+                if self.elements[h_min].value > new_elem.value {
                     self.h_min = Some(new_i);
                 }
             }
         }
         
-        self.elements.push(new_elem);
 
         return lookup_pos;
     }
@@ -289,23 +293,13 @@ impl FibonacciHeap {
             }
         
             self.h_min = None;
-
-            /*for (i, a_i) in a.iter().enumerate() {
-                println!("a[{i}]: {a_i:?}");
-            }*/
-
+            
             // create root ll
             for a_i in a {
                 if let Some(a_i) = a_i {
                     if let Some(h_min) = self.h_min {
                         // root ll already exists
-                        let h_min_left = self.elements[h_min].left;
-
-                        self.elements[a_i].left = h_min_left;
-                        self.elements[h_min_left].right = a_i;
-
-                        self.elements[a_i].right = h_min;
-                        self.elements[h_min].left = a_i;
+                        self.ll_insert(self.elements[h_min].left, a_i, h_min);
 
                         if self.elements[a_i].value < self.elements[h_min].value {
                             self.h_min = Some(a_i);
@@ -334,13 +328,7 @@ impl FibonacciHeap {
 
         // make y a child of x
         if let Some(x_child) = self.elements[x].child {
-            let x_child_left = self.elements[x_child].left;
-
-            self.elements[y].left = x_child_left;
-            self.elements[x_child_left].right = y;
-
-            self.elements[y].right = x_child;
-            self.elements[x_child].left = y;
+            self.ll_insert(self.elements[x_child].left, y, x_child);
         } else {
             // create new ll with only y in it
             self.elements[y].right = y;
@@ -412,13 +400,15 @@ impl FibonacciHeap {
 
         // add x to root list
         if let Some(h_min) = self.h_min {
-            let h_min_left = self.elements[h_min].left;
+            self.ll_insert(self.elements[h_min].left, x, h_min);
+
+            /*let h_min_left = self.elements[h_min].left;
 
             self.elements[x].left = h_min_left;
             self.elements[h_min_left].right = x;
 
             self.elements[x].right = h_min;
-            self.elements[h_min].left = x;
+            self.elements[h_min].left = x;*/
         }
 
         // set x.parent = None, x.marked = false
@@ -517,6 +507,27 @@ impl FibonacciHeap {
                 }
             }
         }
+    }
+
+    fn ll_insert(&mut self, left: usize, insert: usize, right: usize) {
+        if self.elements[left].right != right {
+            panic!("FibHeap Error: cannot insert {} between {} and {} since {} isn't right neighbor of {} (its {})",
+                insert, left, right, right, left, self.elements[left].right
+            );
+        }
+        if self.elements[right].left != left {
+            panic!("FibHeap Error: cannot insert {} between {} and {} since {} isn't left neighbor of {} (its {})",
+                insert, left, right, left, right, self.elements[right].left
+            );
+        }
+
+
+        println!("LL Insert: {} between {} and {}", insert, left, right);
+        self.elements[left].right = insert;
+        self.elements[insert].left = left;
+
+        self.elements[right].left = insert;
+        self.elements[insert].right = right;
     }
     
     pub fn to_graphviz_graph(&self) -> Graph {
