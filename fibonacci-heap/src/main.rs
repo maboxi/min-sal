@@ -60,11 +60,12 @@ fn sal_sheet4_ex4() {
             ExtractMin(name!("E")),
             ExtractMin(name!("E")),
 
-            // E -> D -> C -> A -> B
-            Union(name!("E"), name!("D")),
-            Union(name!("E_D"), name!("C")),
-            Union(name!("E_D_C"), name!("A")),
-            Union(name!("E_D_C_A"), name!("B")),
+            // A -> B -> C -> E -> D
+            Union(name!("A"), name!("B")),
+            Union(name!("A_B"), name!("C")),
+            Union(name!("A_B_C"), name!("E")),
+            Union(name!("A_B_C_E"), name!("D")),
+
         ]
     ));
 }
